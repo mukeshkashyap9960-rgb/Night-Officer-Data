@@ -74,10 +74,10 @@ export const RosterTable: React.FC<RosterTableProps> = ({
   const renderCell = (squad: string, dutyKey: string, dutyTitle: string, row: DutyRow) => {
     const officer = officersMap[squad];
     return (
-      <div className="group relative py-5 px-6 hover:bg-blue-600/10 transition-all cursor-default rounded-2xl border border-transparent hover:border-blue-500/30 shadow-sm">
+      <div className="group relative py-6 px-8 hover:bg-blue-600/10 transition-all cursor-default rounded-[2rem] border border-transparent hover:border-blue-500/30 shadow-sm">
         <div className="flex flex-col">
-          <span className="text-xl font-black text-white leading-tight mb-1 tracking-tight">{officer ? officer.name : squad}</span>
-          <span className="text-base text-slate-400 font-mono font-black uppercase tracking-tight">{squad}</span>
+          <span className="text-2xl font-black text-white leading-tight mb-2 tracking-tight">{officer ? officer.name : squad}</span>
+          <span className="text-lg text-slate-400 font-mono font-black uppercase tracking-widest">{squad}</span>
         </div>
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex gap-2 transition-all">
           <button

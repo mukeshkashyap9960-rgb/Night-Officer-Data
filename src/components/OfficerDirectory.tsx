@@ -98,27 +98,60 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
     const lines = pastedData.trim().split('\n');
     const newOfficers: Partial<Officer>[] = [];
 
-    const headerKeywords = ['category', 'squad', 'name', 'rank', 'phone', 'કેટેગરી', 'સ્કોડ', 'નામ', 'હોદ્દો', 'મોબાઇલ'];
+    // Header detection logic
+    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'designation', 'category'];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
+      // Detect and skip header row
       const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
-      
       if (i === 0) {
         const isHeader = cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)));
         if (isHeader) continue;
       }
 
+      // Format Mapping:
+      // 1. SrNo | 2. Rank | 3. Buckle | 4. Name | 5. Phone | 6. Squad/Branch
+      // Or standard 5-6 column variants
       if (cols.length >= 4) {
+        let category: 'PI' | 'PSI' = 'PSI';
+        let rankStr = '';
+        let nameStr = '';
+        let phoneStr = '';
+        let squadStr = '';
+
+        // If it looks like the 6-column police format provided by user:
+        // [Sr, Rank, Buckle, Name, Phone, Squad]
+        if (cols.length >= 6) {
+          rankStr = cols[1];
+          nameStr = cols[3];
+          phoneStr = cols[4];
+          squadStr = cols[5];
+        } else {
+          // Fallback or other formats
+          rankStr = cols[0];
+          nameStr = cols[1];
+          phoneStr = cols[2];
+          squadStr = cols[3];
+        }
+
+        // Determine category (Handle PI, PSI, WPI, WPSI)
+        const upperRank = rankStr.toUpperCase();
+        if (upperRank.includes('PI') && !upperRank.includes('PSI')) {
+          category = 'PI';
+        } else {
+          category = 'PSI';
+        }
+
         newOfficers.push({
-          category: (cols[0].toUpperCase().includes('PI') && !cols[0].toUpperCase().includes('PSI')) ? 'PI' : 'PSI',
-          squad: cols[1],
-          name: cols[2],
-          rank: cols[3],
-          phone: cols[4] || '',
-          branch: cols[5] || ''
+          category,
+          squad: squadStr || 'સ્કોડ-૦૦',
+          name: nameStr,
+          rank: rankStr,
+          phone: phoneStr.replace(/\s/g, ''), // Remove spaces from numbers
+          branch: ''
         });
       }
     }
@@ -136,10 +169,10 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
         setIsImportModalOpen(false);
         setPastedData('');
         fetchOfficers();
-        alert('Import Successful!');
+        alert(`સફળતાપૂર્વક ${newOfficers.length} અધિકારીઓ સેવ થયા છે!`);
       } catch (err: any) {
         console.error('Import Error:', err);
-        alert(`Server Error (401/Auth): ${err.message || 'Check your Supabase URL and API Key'}\n\nHint: Ensure you have run the SQL script in your Supabase dashboard.`);
+        alert(`ભૂલ આવી છે: ${err.message || 'Check your data format'}`);
       }
     }
   }
