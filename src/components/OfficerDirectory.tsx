@@ -85,7 +85,9 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
       .delete()
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      alert(`Error deleting officer: ${error.message} (Code: ${error.code})`);
+    } else {
       fetchOfficers();
     }
   }
@@ -111,15 +113,22 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
     }
 
     if (newOfficers.length > 0) {
-      if (mode === 'replace') {
-        await supabase.from(TABLES.OFFICERS).delete().neq('name', 'DELETE_ALL_HACK');
-      }
+      try {
+        if (mode === 'replace') {
+          const { error: delError } = await supabase.from(TABLES.OFFICERS).delete().neq('name', 'DELETE_ALL_HACK');
+          if (delError) throw delError;
+        }
 
-      const { error } = await supabase.from(TABLES.OFFICERS).insert(newOfficers);
-      if (!error) {
+        const { error: insError } = await supabase.from(TABLES.OFFICERS).insert(newOfficers);
+        if (insError) throw insError;
+
         setIsImportModalOpen(false);
         setPastedData('');
         fetchOfficers();
+        alert('Import Successful!');
+      } catch (err: any) {
+        console.error('Import Error:', err);
+        alert(`Server Error (401/Auth): ${err.message || 'Check your Supabase URL and API Key'}\n\nHint: Ensure you have run the SQL script in your Supabase dashboard.`);
       }
     }
   }

@@ -1,0 +1,5 @@
+{
+  "summary":  "Robust Supabase SQL setup script. Enables required extensions, creates tables for Officers and Roster, and sets up wide-open RLS policies to ensure public access for the app. Includes verification queries.",
+  "updatedAt":  "2026-10-25T07:53:55.510519776Z",
+  "userFacing":  true
+}

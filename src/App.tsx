@@ -249,28 +249,32 @@ export default function App() {
       setRoster(finalRoster);
       
       if (supabase) {
-        if (mode === 'replace') {
-          // Delete everything first
-          await supabase.from(TABLES.ROSTER).delete().neq('date', 'DELETE_ALL_HACK');
-        }
+        try {
+          if (mode === 'replace') {
+            const { error: delError } = await supabase.from(TABLES.ROSTER).delete().neq('date', 'DELETE_ALL_HACK');
+            if (delError) throw delError;
+          }
 
-        const { error } = await supabase.from(TABLES.ROSTER).upsert(
-          newRows.map(r => ({
-            date: r.date,
-            day_name: r.dayName,
-            communal_pi: r.communalPi,
-            division_pi: r.divisionPi,
-            cm_morcho_psi: r.cmMorchoPsi,
-            campus_psi: r.campusPsi,
-            vvip_psi: r.vvipPsi
-          })),
-          { onConflict: 'date' }
-        );
-        
-        if (error) {
-          showToast(`Error saving: ${error.message}`);
-        } else {
+          const { error: upsertError } = await supabase.from(TABLES.ROSTER).upsert(
+            newRows.map(r => ({
+              date: r.date,
+              day_name: r.dayName,
+              communal_pi: r.communalPi,
+              division_pi: r.divisionPi,
+              cm_morcho_psi: r.cmMorchoPsi,
+              campus_psi: r.campusPsi,
+              vvip_psi: r.vvipPsi
+            })),
+            { onConflict: 'date' }
+          );
+          
+          if (upsertError) throw upsertError;
+          
           showToast(`Successfully ${mode}ed ${newRows.length} rows in Supabase!`);
+          alert(`Import Successful! ${newRows.length} days synced.`);
+        } catch (err: any) {
+          console.error('Supabase Roster Error:', err);
+          alert(`Server Error: ${err.message || 'Verification Failed'}\n\nCheck if your Supabase table "NightRoster" exists and RLS policies are active.`);
         }
       } else {
         showToast(`Imported ${newRows.length} rows (${mode} mode - local only)`);
