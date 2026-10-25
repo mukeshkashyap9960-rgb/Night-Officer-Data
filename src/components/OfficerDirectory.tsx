@@ -98,8 +98,19 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
     const lines = pastedData.trim().split('\n');
     const newOfficers: Partial<Officer>[] = [];
 
-    for (const line of lines) {
+    const headerKeywords = ['category', 'squad', 'name', 'rank', 'phone', 'કેટેગરી', 'સ્કોડ', 'નામ', 'હોદ્દો', 'મોબાઇલ'];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
       const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
+      
+      if (i === 0) {
+        const isHeader = cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)));
+        if (isHeader) continue;
+      }
+
       if (cols.length >= 4) {
         newOfficers.push({
           category: (cols[0].toUpperCase().includes('PI') && !cols[0].toUpperCase().includes('PSI')) ? 'PI' : 'PSI',

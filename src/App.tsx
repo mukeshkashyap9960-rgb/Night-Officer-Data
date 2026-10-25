@@ -227,9 +227,19 @@ export default function App() {
     const lines = text.trim().split('\n');
     const newRows: DutyRow[] = [];
 
-    for (const line of lines) {
+    const headerKeywords = ['date', 'day', 'communal', 'division', 'તારીખ', 'વાર', 'કોમ્યુનલ', 'ડીવીઝન'];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
       const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
       
+      if (i === 0) {
+        const isHeader = cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)));
+        if (isHeader) continue;
+      }
+
       if (cols.length >= 7) {
         newRows.push({
           date: cols[0],
