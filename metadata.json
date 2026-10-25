@@ -1,0 +1,6 @@
+{
+  "name": "પોલીસ નાઈટ ડ્યુટી રોસ્ટર - PI & PSI શિડ્યુલ",
+  "description": "ગુજરાત પોલીસ PI અને PSI નાઈટ ડ્યુટી શિડ્યુલ, વોટ્સએપ ડાયરેક્ટ મેસેજિંગ અને એલર્ટ સિસ્ટમ.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

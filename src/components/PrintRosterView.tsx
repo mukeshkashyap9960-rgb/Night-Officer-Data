@@ -1,0 +1,78 @@
+import React from 'react';
+import { DutyRow } from '../types/roster';
+
+interface PrintRosterViewProps {
+  roster: DutyRow[];
+  monthNameGu: string;
+  year: number;
+}
+
+export const PrintRosterView: React.FC<PrintRosterViewProps> = ({
+  roster,
+  monthNameGu,
+  year,
+}) => {
+  return (
+    <div className="hidden print:block p-4 bg-white text-black text-xs font-serif leading-tight">
+      {/* Official Police Order Header */}
+      <div className="text-center border-b-2 border-black pb-3 mb-4">
+        <div className="font-bold text-sm tracking-wider uppercase">
+          ગુજરાત રાજ્ય પોલીસ વિભાગ
+        </div>
+        <div className="font-bold text-base mt-0.5">
+          નાઈટ પેટ્રોલીંગ અને બંદોબસ્ત ફરજ રોસ્ટર
+        </div>
+        <div className="text-xs font-semibold mt-1">
+          માહે: {monthNameGu} - {year} (સમય: રાત્રે ૨૦:૦૦ થી સવારે ૦૮:૦૦ કલાક)
+        </div>
+      </div>
+
+      {/* Table */}
+      <table className="w-full border-collapse border border-black text-center text-[10px]">
+        <thead>
+          <tr className="bg-slate-200 border-b border-black font-bold">
+            <th className="border border-black p-1.5 w-16">તારીખ</th>
+            <th className="border border-black p-1.5 w-14">વાર</th>
+            <th className="border border-black p-1.5">કોમ્યુનલ નાઈટ (PI)</th>
+            <th className="border border-black p-1.5">ડીવીઝન નાઈટ (PI)</th>
+            <th className="border border-black p-1.5">CM મોરચો (PSI)</th>
+            <th className="border border-black p-1.5">કેમ્પસ નાઈટ (PSI)</th>
+            <th className="border border-black p-1.5">VVIP બંદોબસ્ત (PSI)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roster.map((row) => (
+            <tr key={row.date} className="border-b border-black">
+              <td className="border border-black p-1 font-mono">{row.date}</td>
+              <td className="border border-black p-1">{row.dayName}</td>
+              <td className="border border-black p-1 font-medium">{row.communalPi}</td>
+              <td className="border border-black p-1 font-medium">{row.divisionPi}</td>
+              <td className="border border-black p-1">{row.cmMorchoPsi}</td>
+              <td className="border border-black p-1">{row.campusPsi}</td>
+              <td className="border border-black p-1">{row.vvipPsi}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Official Signatures */}
+      <div className="mt-8 grid grid-cols-3 gap-6 pt-6 text-center text-xs font-semibold">
+        <div>
+          <div className="h-10 border-b border-dotted border-black mx-4 mb-1"></div>
+          <div>પોલીસ ઇન્સ્પેક્ટર (રીડર)</div>
+          <div className="text-[10px] font-normal text-slate-700">પોલીસ કમિશનર કચેરી</div>
+        </div>
+        <div>
+          <div className="h-10 border-b border-dotted border-black mx-4 mb-1"></div>
+          <div>સહાયક પોલીસ કમિશનર (ACP)</div>
+          <div className="text-[10px] font-normal text-slate-700">કંટ્રોલ રૂમ / વહીવટ</div>
+        </div>
+        <div>
+          <div className="h-10 border-b border-dotted border-black mx-4 mb-1"></div>
+          <div>નાયબ પોલીસ કમિશનર (DCP)</div>
+          <div className="text-[10px] font-normal text-slate-700">હેડક્વાર્ટર / વહીવટ</div>
+        </div>
+      </div>
+    </div>
+  );
+};

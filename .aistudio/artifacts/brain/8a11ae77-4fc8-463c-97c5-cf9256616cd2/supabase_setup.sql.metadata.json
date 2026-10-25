@@ -1,0 +1,5 @@
+{
+  "summary":  "Supabase SQL script to create tables with 'Night' prefix for Officers, Roster, and Config. Includes Row Level Security (RLS) policies.",
+  "updatedAt":  "2026-10-25T07:12:01.030988459Z",
+  "userFacing":  true
+}
