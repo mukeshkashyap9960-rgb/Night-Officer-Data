@@ -117,19 +117,19 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter">{item.role} ROLE</span>
                 </div>
 
-                <h4 className="text-sm font-bold text-slate-500 mb-1 uppercase tracking-wider">{item.titleGu}</h4>
-                <div className="text-xl font-bold text-white mb-2 leading-tight group-hover:text-blue-400 transition-colors">
+                <h4 className="text-base font-black text-slate-500 mb-2 uppercase tracking-widest">{item.titleGu}</h4>
+                <div className="text-2xl font-black text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors">
                   {officer ? officer.name : item.squad}
                 </div>
                 
                 {officer && (
-                  <div className="space-y-1 mb-4">
-                    <p className="text-xs text-slate-400 flex items-center gap-1 font-medium">
-                      <Shield size={12} className="text-blue-500" />
+                  <div className="space-y-2 mb-6">
+                    <p className="text-sm text-slate-300 flex items-center gap-2 font-bold">
+                      <Shield size={14} className="text-blue-500" />
                       {officer.rank}
                     </p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 font-mono">
-                      <Phone size={12} className="text-slate-600" />
+                    <p className="text-sm text-slate-400 flex items-center gap-2 font-mono font-bold tracking-wider">
+                      <Phone size={14} className="text-slate-600" />
                       {officer.phone}
                     </p>
                   </div>

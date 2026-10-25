@@ -221,19 +221,18 @@ export default function App() {
     setWhatsAppModal({ isOpen: true, title: `PSI નાઈટ ડ્યુટી પત્રક`, recipientName: 'PSI ગ્રૂપ', recipientPhone: '', message });
   };
 
-  const handleImportPaste = async (text: string) => {
+  const handleImportPaste = async (text: string, mode: 'append' | 'replace') => {
     const lines = text.trim().split('\n');
     const newRows: DutyRow[] = [];
 
     for (const line of lines) {
-      // Split by tab (Excel/Google Sheets default) or comma
       const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
       
       if (cols.length >= 7) {
         newRows.push({
           date: cols[0],
           dayName: cols[1],
-          dayNameEn: cols[1], // Fallback
+          dayNameEn: cols[1],
           communalPi: cols[2],
           divisionPi: cols[3],
           cmMorchoPsi: cols[4],
@@ -244,9 +243,15 @@ export default function App() {
     }
 
     if (newRows.length > 0) {
-      setRoster(newRows);
+      const finalRoster = mode === 'replace' ? newRows : [...roster, ...newRows];
+      setRoster(finalRoster);
       
       if (supabase) {
+        if (mode === 'replace') {
+          // Delete everything first
+          await supabase.from(TABLES.ROSTER).delete().neq('date', 'DELETE_ALL_HACK');
+        }
+
         const { error } = await supabase.from(TABLES.ROSTER).upsert(
           newRows.map(r => ({
             date: r.date,
@@ -263,10 +268,10 @@ export default function App() {
         if (error) {
           showToast(`Error saving: ${error.message}`);
         } else {
-          showToast(`Successfully imported ${newRows.length} rows to Supabase!`);
+          showToast(`Successfully ${mode}ed ${newRows.length} rows in Supabase!`);
         }
       } else {
-        showToast(`Imported ${newRows.length} rows (Local only - Supabase disconnected)`);
+        showToast(`Imported ${newRows.length} rows (${mode} mode - local only)`);
       }
     }
   };
@@ -374,6 +379,21 @@ export default function App() {
                     onBroadcast={(type, row) => type === 'PI' ? handleOpenPiBroadcast(row) : handleOpenPsiBroadcast(row, roster.indexOf(row))}
                     lang={lang}
                   />
+
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Total PI Units', count: officers.filter(o => o.category === 'PI').length, color: 'blue' },
+                      { label: 'Total PSI Units', count: officers.filter(o => o.category === 'PSI').length, color: 'emerald' },
+                      { label: 'Roster Days', count: roster.length, color: 'amber' },
+                      { label: 'Night Shifts', count: roster.length * 5, color: 'rose' },
+                    ].map((stat) => (
+                      <div key={stat.label} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                        <p className={`text-3xl font-black text-${stat.color}-500`}>{stat.count}</p>
+                      </div>
+                    ))}
+                  </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6">

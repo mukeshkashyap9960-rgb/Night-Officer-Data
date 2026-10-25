@@ -95,6 +95,17 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <button
+          onClick={onToggleLang}
+          className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-blue-500 hover:border-blue-500/50 transition-all cursor-pointer flex items-center gap-2"
+          title={lang === 'gu' ? 'Switch to English' : 'ગુજરાતીમાં બદલો'}
+        >
+          <Languages size={18} />
+          <span className="text-[10px] font-bold uppercase tracking-tighter hidden sm:inline">
+            {lang === 'gu' ? 'EN' : 'GU'}
+          </span>
+        </button>
+
+        <button
           onClick={onOpenBroadcastToday}
           className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-900/20 cursor-pointer"
         >
