@@ -10,9 +10,12 @@ import {
   X, 
   Save, 
   ClipboardPaste, 
-  Check 
+  Check,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import { Officer } from '../types/roster';
+import { DEFAULT_OFFICERS } from '../data/rosterData';
 import { supabase, TABLES } from '../utils/supabaseClient';
 
 interface OfficerDirectoryProps {
@@ -33,23 +36,72 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
     if (supabase) {
       fetchOfficers();
     } else {
+      setOfficers(DEFAULT_OFFICERS);
       setLoading(false);
     }
   }, []);
 
   async function fetchOfficers() {
-    if (!supabase) return;
+    if (!supabase) {
+      setOfficers(DEFAULT_OFFICERS);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase
       .from(TABLES.OFFICERS)
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('category', { ascending: true })
+      .order('squad', { ascending: true });
 
-    if (!error && data) {
+    if (!error && data && data.length > 0) {
       setOfficers(data);
+    } else {
+      setOfficers(DEFAULT_OFFICERS);
     }
     setLoading(false);
   }
+
+  const handleExportExcel = () => {
+    const listToExport = filteredOfficers.length > 0 ? filteredOfficers : officers;
+    if (listToExport.length === 0) {
+      alert(lang === 'gu' ? 'એક્સપોર્ટ કરવા માટે કોઈ ડેટા નથી.' : 'No data to export.');
+      return;
+    }
+
+    const headers = [
+      'અ.નં.',
+      'કેટેગરી (Category)',
+      'હોદ્દો (Rank)',
+      'નામ (Officer Name)',
+      'ફરજની જગ્યા / સ્કોડ (Squad)',
+      'મોબાઇલ નંબર (Mobile Number)',
+      'બ્રાન્ચ (Branch)'
+    ];
+
+    const rows = listToExport.map((o, idx) => [
+      idx + 1,
+      `"${o.category || ''}"`,
+      `"${(o.rank || '').replace(/"/g, '""')}"`,
+      `"${(o.name || '').replace(/"/g, '""')}"`,
+      `"${(o.squad || '').replace(/"/g, '""')}"`,
+      `"${(o.phone || '').replace(/"/g, '""')}"`,
+      `"${(o.branch || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const now = new Date();
+    const dateStr = `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}`;
+    link.download = `Gujarat_Police_Officers_Export_${dateStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   async function handleSaveOfficer(e: React.FormEvent) {
     e.preventDefault();
@@ -215,6 +267,16 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
         
         <div className="flex flex-wrap gap-3">
           <button 
+            type="button"
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-4 rounded-2xl font-black flex items-center gap-3 transition-all cursor-pointer shadow-xl shadow-emerald-900/20 active:scale-95"
+            title={lang === 'gu' ? 'Excel / CSV શીટ એક્સપોર્ટ કરો' : 'Export to Excel'}
+          >
+            <FileSpreadsheet size={20} />
+            {lang === 'gu' ? 'Excel એક્સપોર્ટ' : 'EXPORT EXCEL'}
+          </button>
+          <button 
+            type="button"
             onClick={() => setIsImportModalOpen(true)}
             className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-2xl font-black flex items-center gap-3 transition-all cursor-pointer border border-slate-700"
           >
@@ -222,6 +284,7 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
             PASTE IMPORT
           </button>
           <button
+            type="button"
             onClick={() => {
               setEditingOfficer({ id: 'new-' + Date.now(), squad: '', category: 'PI', name: '', rank: '', phone: '', branch: '' });
               setIsAddOfficerModalOpen(true);
