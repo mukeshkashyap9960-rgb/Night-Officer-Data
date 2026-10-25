@@ -17,6 +17,7 @@ import { DutyRow, Officer } from '../types/roster';
 interface RosterTableProps {
   roster: DutyRow[];
   officersMap: Record<string, Officer>;
+  officers?: Officer[];
   currentDateStr: string;
   onSendWhatsApp: (squad: string, dutyType: string, dutyTitleGu: string, date: string, day: string) => void;
   onPiBroadcast: (row: DutyRow) => void;
@@ -29,6 +30,7 @@ interface RosterTableProps {
 export const RosterTable: React.FC<RosterTableProps> = ({
   roster,
   officersMap,
+  officers = [],
   currentDateStr,
   onSendWhatsApp,
   onPiBroadcast,
@@ -41,17 +43,36 @@ export const RosterTable: React.FC<RosterTableProps> = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [pastedData, setPastedData] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'pi' | 'psi'>('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | '1-10' | '11-20' | '21-30'>('all');
 
   const filteredRoster = roster.filter((row) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = !searchTerm.trim() || 
+    // Parse day number for 1-10, 11-20, 21-30 filter
+    const dayNum = parseInt(row.date.split('/')[0], 10);
+    if (dateRangeFilter === '1-10' && (dayNum < 1 || dayNum > 10)) return false;
+    if (dateRangeFilter === '11-20' && (dayNum < 11 || dayNum > 20)) return false;
+    if (dateRangeFilter === '21-30' && (dayNum < 21 || dayNum > 30)) return false;
+
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) {
+      if (activeFilter === 'pi') return row.communalPi || row.divisionPi;
+      if (activeFilter === 'psi') return row.cmMorchoPsi || row.campusPsi || row.vvipPsi;
+      return true;
+    }
+
+    const matchesSearch = 
       row.communalPi.toLowerCase().includes(term) ||
       row.divisionPi.toLowerCase().includes(term) ||
       row.cmMorchoPsi.toLowerCase().includes(term) ||
       row.campusPsi.toLowerCase().includes(term) ||
       row.vvipPsi.toLowerCase().includes(term) ||
       row.date.toLowerCase().includes(term) ||
-      row.dayName.toLowerCase().includes(term);
+      row.dayName.toLowerCase().includes(term) ||
+      // Also match officer name if available
+      (officersMap[row.communalPi]?.name?.toLowerCase().includes(term)) ||
+      (officersMap[row.divisionPi]?.name?.toLowerCase().includes(term)) ||
+      (officersMap[row.cmMorchoPsi]?.name?.toLowerCase().includes(term)) ||
+      (officersMap[row.campusPsi]?.name?.toLowerCase().includes(term)) ||
+      (officersMap[row.vvipPsi]?.name?.toLowerCase().includes(term));
 
     if (!matchesSearch) return false;
 
@@ -71,26 +92,59 @@ export const RosterTable: React.FC<RosterTableProps> = ({
     setIsImportModalOpen(false);
   };
 
-  const renderCell = (squad: string, dutyKey: string, dutyTitle: string, row: DutyRow) => {
-    const officer = officersMap[squad];
+  const renderCell = (squadOrName: string, dutyKey: string, dutyTitle: string, row: DutyRow) => {
+    // Find officer by map (indexed by squad & name) or search in officers array
+    const officer = officersMap[squadOrName] || officers.find(o => o.name === squadOrName || o.squad === squadOrName);
+    const displayName = officer ? officer.name : squadOrName;
+    const squadBadge = officer ? officer.squad : squadOrName;
+
     return (
-      <div className="group relative py-6 px-8 hover:bg-blue-600/10 transition-all cursor-default rounded-[2rem] border border-transparent hover:border-blue-500/30 shadow-sm">
-        <div className="flex flex-col">
-          <span className="text-2xl font-black text-white leading-tight mb-2 tracking-tight">{officer ? officer.name : squad}</span>
-          <span className="text-lg text-slate-400 font-mono font-black uppercase tracking-widest">{squad}</span>
+      <div 
+        onClick={() => onSwapDuty(row.date, dutyKey)}
+        className="group relative p-3.5 sm:p-4 bg-slate-950/40 hover:bg-blue-600/15 border border-slate-800/60 hover:border-blue-500/50 rounded-2xl transition-all cursor-pointer shadow-xs hover:shadow-lg min-w-[190px]"
+        title={lang === 'gu' ? `સ્વેપ કરવા માટે ક્લિક કરો (${row.date})` : `Click to swap (${row.date})`}
+      >
+        <div className="flex flex-col pr-12 min-h-[58px] justify-center">
+          <span className="text-base sm:text-lg font-black text-white leading-tight group-hover:text-blue-300 transition-colors line-clamp-2">
+            {displayName}
+          </span>
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span className="text-[11px] font-mono font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/30">
+              {squadBadge}
+            </span>
+            {officer?.rank && (
+              <span className="text-[10px] text-slate-400 font-bold bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/50">
+                {officer.rank}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex gap-2 transition-all">
+
+        {/* Action Controls - Always clearly visible and easy to tap */}
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
           <button
-            onClick={() => onSendWhatsApp(squad, dutyKey, dutyTitle, row.date, row.dayName)}
-            className="p-3 bg-slate-900 border border-slate-700 text-emerald-500 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-xl"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSwapDuty(row.date, dutyKey);
+            }}
+            className="p-2 sm:px-2.5 sm:py-1.5 bg-blue-600/90 hover:bg-blue-500 text-white rounded-xl shadow-md flex items-center gap-1 text-xs font-black cursor-pointer transition-all hover:scale-105 active:scale-95"
+            title={lang === 'gu' ? 'સ્વેપ / બદલો' : 'Swap Officer'}
           >
-            <MessageSquare size={18} />
+            <ArrowRightLeft size={14} className="stroke-[2.5]" />
+            <span className="hidden xl:inline text-[11px]">{lang === 'gu' ? 'સ્વેપ' : 'Swap'}</span>
           </button>
+          
           <button
-            onClick={() => onSwapDuty(row.date, dutyKey)}
-            className="p-3 bg-slate-900 border border-slate-700 text-slate-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-xl"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSendWhatsApp(squadOrName, dutyKey, dutyTitle, row.date, row.dayName);
+            }}
+            className="p-2 bg-slate-800 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl border border-slate-700 hover:border-emerald-500 shadow-sm transition-all cursor-pointer"
+            title="WhatsApp"
           >
-            <ArrowRightLeft size={18} />
+            <MessageSquare size={14} />
           </button>
         </div>
       </div>
@@ -99,59 +153,109 @@ export const RosterTable: React.FC<RosterTableProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row md:items-center justify-between gap-4">
-         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center flex-1">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-            <input
-              type="text"
-              placeholder={lang === 'gu' ? 'તારીખ, સ્કોડ અથવા અધિકારી શોધો...' : 'Search roster...'}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-base"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
-            {(['all', 'pi', 'psi'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`px-6 py-2 rounded-lg text-sm font-black uppercase tracking-widest transition-all cursor-pointer ${
-                  activeFilter === f ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col xl:flex-row md:items-center justify-between gap-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center flex-1">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+              <input
+                type="text"
+                placeholder={lang === 'gu' ? 'તારીખ, સ્કોડ અથવા અધિકારીનું નામ શોધો...' : 'Search date, squad, or officer name...'}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold text-base"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            {/* Category Filter */}
+            <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
+              {(['all', 'pi', 'psi'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setActiveFilter(f)}
+                  className={`px-5 py-2 rounded-lg text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    activeFilter === f ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {f === 'all' ? (lang === 'gu' ? 'બધા' : 'All') : f.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick 1 to 30 Date Range Selector */}
+            <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 shrink-0">
+              {([
+                { key: 'all', labelGu: '૧-૩૦ તારીખ', labelEn: 'All (1-30)' },
+                { key: '1-10', labelGu: '૧ થી ૧૦', labelEn: '1 to 10' },
+                { key: '11-20', labelGu: '૧૧ થી ૨૦', labelEn: '11 to 20' },
+                { key: '21-30', labelGu: '૨૧ થી ૩૦', labelEn: '21 to 30' },
+              ] as const).map((d) => (
+                <button
+                  key={d.key}
+                  onClick={() => setDateRangeFilter(d.key)}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    dateRangeFilter === d.key 
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {lang === 'gu' ? d.labelGu : d.labelEn}
+                </button>
+              ))}
+            </div>
+
+            <div className="text-xs font-black text-slate-400 uppercase tracking-widest px-3 whitespace-nowrap hidden md:block border-l border-slate-800">
+              {filteredRoster.length} / {roster.length} {lang === 'gu' ? 'દિવસો' : 'Days'}
+            </div>
           </div>
 
-          <div className="text-xs font-black text-slate-500 uppercase tracking-widest px-4 whitespace-nowrap hidden md:block border-l border-slate-800">
-            {filteredRoster.length} Entries
-          </div>
+          <button 
+            onClick={() => setIsImportModalOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-lg shadow-emerald-900/20 cursor-pointer active:scale-95 shrink-0"
+          >
+            <ClipboardPaste size={20} />
+            {lang === 'gu' ? 'Excel માંથી ઇમ્પોર્ટ' : 'IMPORT SPREADSHEET'}
+          </button>
         </div>
 
-        <button 
-          onClick={() => setIsImportModalOpen(true)}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-lg shadow-emerald-900/20 cursor-pointer active:scale-95"
-        >
-          <ClipboardPaste size={22} />
-          {lang === 'gu' ? 'Excel માંથી ઇમ્પોર્ટ' : 'IMPORT SPREADSHEET'}
-        </button>
+        {/* Quick Helper Banner */}
+        <div className="flex items-center justify-between px-5 py-2.5 bg-blue-950/40 border border-blue-800/40 rounded-2xl text-xs">
+          <div className="flex items-center gap-2 text-blue-300 font-bold">
+            <span className="p-1 bg-blue-600/30 rounded-lg text-blue-400 font-mono">⚡ QUICK SWAP:</span>
+            <span>{lang === 'gu' ? 'નીચે આપેલ ૧ થી ૩૦ તારીખના કોઈપણ ખાના પર અથવા સ્વેપ બટન પર ક્લિક કરો - તરત લિસ્ટ વ્યૂ ખુલશે!' : 'Click any slot or Swap button below to open fast List View for instant changes.'}</span>
+          </div>
+          <span className="text-amber-400 font-bold hidden sm:inline">
+            {lang === 'gu' ? '૧-ક્લિકમાં અધિકારી બદલો' : '1-Click Officer Selection'}
+          </span>
+        </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
+          <table className="w-full text-left border-collapse min-w-[1100px]">
             <thead>
-              <tr className="bg-slate-950/80 border-b border-slate-800">
-                <th className="py-7 px-10 text-sm font-black text-slate-400 uppercase tracking-widest">Date & Day</th>
-                <th className="py-7 px-4 text-sm font-black text-slate-400 uppercase tracking-widest border-l border-slate-800/50 text-center">Communal (PI)</th>
-                <th className="py-7 px-4 text-sm font-black text-slate-400 uppercase tracking-widest border-l border-slate-800/50 text-center">Division (PI)</th>
-                <th className="py-7 px-4 text-sm font-black text-slate-400 uppercase tracking-widest border-l border-slate-800/50 text-center">CM Route (PSI)</th>
-                <th className="py-7 px-4 text-sm font-black text-slate-400 uppercase tracking-widest border-l border-slate-800/50 text-center">Campus (PSI)</th>
-                <th className="py-7 px-4 text-sm font-black text-slate-400 uppercase tracking-widest border-l border-slate-800/50 text-center">VVIP (PSI)</th>
-                <th className="py-7 px-10 text-right text-sm font-black text-slate-400 uppercase tracking-widest border-l border-slate-800/50">Actions</th>
+              <tr className="bg-slate-950/90 border-b border-slate-800 text-center">
+                <th className="py-6 px-6 text-xs sm:text-sm font-black text-slate-300 uppercase tracking-wider text-left">
+                  {lang === 'gu' ? 'તારીખ અને વાર' : 'Date & Day'}
+                </th>
+                <th className="py-6 px-3 text-xs sm:text-sm font-black text-blue-400 uppercase tracking-wider border-l border-slate-800/50">
+                  {lang === 'gu' ? 'કોમ્યુનલ (PI)' : 'Communal (PI)'}
+                </th>
+                <th className="py-6 px-3 text-xs sm:text-sm font-black text-indigo-400 uppercase tracking-wider border-l border-slate-800/50">
+                  {lang === 'gu' ? 'ડીવીઝન (PI)' : 'Division (PI)'}
+                </th>
+                <th className="py-6 px-3 text-xs sm:text-sm font-black text-amber-400 uppercase tracking-wider border-l border-slate-800/50">
+                  {lang === 'gu' ? 'CM મોરચો (PSI)' : 'CM Route (PSI)'}
+                </th>
+                <th className="py-6 px-3 text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-wider border-l border-slate-800/50">
+                  {lang === 'gu' ? 'કેમ્પસ (PSI)' : 'Campus (PSI)'}
+                </th>
+                <th className="py-6 px-3 text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wider border-l border-slate-800/50">
+                  {lang === 'gu' ? 'VVIP (PSI)' : 'VVIP (PSI)'}
+                </th>
+                <th className="py-6 px-6 text-center text-xs sm:text-sm font-black text-slate-300 uppercase tracking-wider border-l border-slate-800/50">
+                  {lang === 'gu' ? 'પત્રક / Actions' : 'Actions'}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50 font-bold">

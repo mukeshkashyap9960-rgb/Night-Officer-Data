@@ -168,20 +168,38 @@ export default function App() {
     if (officersData && officersData.length > 0) {
       setOfficers(officersData);
       const map: Record<string, Officer> = {};
-      officersData.forEach(o => map[o.squad] = o);
+      officersData.forEach(o => {
+        if (o.squad) map[o.squad] = o;
+        if (o.name) map[o.name] = o;
+        if (o.id) map[o.id] = o;
+      });
       setOfficersMap(map);
     } else {
       // Seed default if empty
       setOfficers(DEFAULT_OFFICERS);
       const map: Record<string, Officer> = {};
-      DEFAULT_OFFICERS.forEach(o => map[o.squad] = o);
+      DEFAULT_OFFICERS.forEach(o => {
+        if (o.squad) map[o.squad] = o;
+        if (o.name) map[o.name] = o;
+        if (o.id) map[o.id] = o;
+      });
       setOfficersMap(map);
     }
 
     // Fetch Roster from Supabase
     const { data: rosterData } = await supabase.from(TABLES.ROSTER).select('*').order('created_at', { ascending: true });
     if (rosterData && rosterData.length > 0) {
-      setRoster(rosterData);
+      const normalizedRoster: DutyRow[] = rosterData.map((r: any) => ({
+        date: r.date,
+        dayName: r.day_name || r.dayName || '',
+        dayNameEn: r.day_name_en || r.dayNameEn || '',
+        communalPi: r.communal_pi || r.communalPi || '',
+        divisionPi: r.division_pi || r.divisionPi || '',
+        cmMorchoPsi: r.cm_morcho_psi || r.cmMorchoPsi || '',
+        campusPsi: r.campus_psi || r.campusPsi || '',
+        vvipPsi: r.vvip_psi || r.vvipPsi || '',
+      }));
+      setRoster(normalizedRoster);
     } else {
       setRoster(NOVEMBER_2026_ROSTER);
     }
@@ -296,15 +314,32 @@ export default function App() {
     const updatedRoster = roster.map(row => row.date === date ? { ...row, [dutyColumnId]: newSquad } : row);
     setRoster(updatedRoster);
 
-    // Save to Supabase
+    // Save to Supabase using explicit snake_case column names
     const targetRow = updatedRoster.find(r => r.date === date);
     if (targetRow && supabase) {
-      const { id, created_at, ...updateData } = targetRow as any;
-      await supabase.from(TABLES.ROSTER).upsert([ { date, ...updateData } ], { onConflict: 'date' });
+      try {
+        const { error } = await supabase.from(TABLES.ROSTER).upsert([
+          {
+            date: targetRow.date,
+            day_name: targetRow.dayName,
+            communal_pi: targetRow.communalPi,
+            division_pi: targetRow.divisionPi,
+            cm_morcho_psi: targetRow.cmMorchoPsi,
+            campus_psi: targetRow.campusPsi,
+            vvip_psi: targetRow.vvipPsi,
+          }
+        ], { onConflict: 'date' });
+
+        if (error) {
+          console.error('Supabase swap error:', error);
+        }
+      } catch (err) {
+        console.error('Failed to sync swap with Supabase:', err);
+      }
     }
 
     if (alertConfig.soundEnabled) alertSound.playSoftBeep();
-    showToast(`તારીખ ${date} માટે ડ્યુટી બદલાઈ ગઈ.`);
+    showToast(`તારીખ ${date} માટે ડ્યુટી સફળતાપૂર્વક બદલાઈ ગઈ.`);
   };
 
   const handleExportCSV = () => {
@@ -387,9 +422,43 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Quick 1 to 30 Date Selector for Rapid Swapping & Viewing */}
+                  <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold px-1">
+                      <span className="text-slate-400">
+                        {lang === 'gu' ? '૧ થી ૩૦ તારીખ પસંદ કરો (ફટાફટ સ્વેપ અને વિગત માટે):' : 'Select Date (1 to 30 November):'}
+                      </span>
+                      <span className="text-amber-400 font-mono bg-amber-950/60 px-2.5 py-0.5 rounded border border-amber-800/40">
+                        {lang === 'gu' ? 'પસંદ કરેલ તારીખ' : 'Active Date'}: {selectedDate}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {roster.map((r) => {
+                        const isSelected = r.date === selectedDate;
+                        const dayNum = r.date.split('/')[0];
+                        return (
+                          <button
+                            key={r.date}
+                            type="button"
+                            onClick={() => setSelectedDate(r.date)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer flex flex-col items-center min-w-[56px] border ${
+                              isSelected
+                                ? 'bg-blue-600 text-white border-blue-400 shadow-lg scale-105 ring-2 ring-blue-500/30'
+                                : 'bg-slate-950 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            <span className="text-base font-black leading-none">{dayNum}</span>
+                            <span className="text-[10px] font-bold opacity-80 mt-1">{r.dayName.slice(0, 3)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <TodayDutyCard
                     dutyRow={selectedDutyRow}
                     officersMap={officersMap}
+                    officers={officers}
                     onSendWhatsApp={handleOpenIndividualWhatsApp}
                     onSwapDuty={(date, id) => setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: (selectedDutyRow as any)[id] })}
                     onBroadcast={(type, row) => type === 'PI' ? handleOpenPiBroadcast(row) : handleOpenPsiBroadcast(row, roster.indexOf(row))}
@@ -451,6 +520,7 @@ export default function App() {
                 <RosterTable
                   roster={roster}
                   officersMap={officersMap}
+                  officers={officers}
                   currentDateStr={selectedDate}
                   onSendWhatsApp={handleOpenIndividualWhatsApp}
                   onPiBroadcast={handleOpenPiBroadcast}

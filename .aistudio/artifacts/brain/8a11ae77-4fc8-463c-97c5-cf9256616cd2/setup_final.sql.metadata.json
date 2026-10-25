@@ -1,5 +1,5 @@
 {
-  "summary":  "Robust Supabase SQL setup script. Enables required extensions, creates tables for Officers and Roster, and sets up wide-open RLS policies to ensure public access for the app. Includes verification queries.",
-  "updatedAt":  "2026-10-25T07:53:55.510519776Z",
+  "summary":  "Complete SQL setup script and verification queries for NightOfficers and NightRoster in Supabase. Includes table definitions, RLS policies, index creation, and count verification queries.",
+  "updatedAt":  "2026-10-25T09:48:26.147632376Z",
   "userFacing":  true
 }
