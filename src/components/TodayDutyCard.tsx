@@ -80,8 +80,8 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
             <Clock size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-white">{lang === 'gu' ? 'આજની ફરજ વિગત' : 'Active Duty Allocation'}</h3>
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{dutyRow.date} • {dutyRow.dayName}</p>
+            <h3 className="text-xl font-extrabold text-white">{lang === 'gu' ? 'આજની ફરજ વિગત' : 'Active Duty Allocation'}</h3>
+            <p className="text-xs text-slate-500 uppercase tracking-widest font-black">{dutyRow.date} • {dutyRow.dayName}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -117,19 +117,19 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter">{item.role} ROLE</span>
                 </div>
 
-                <h4 className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">{item.titleGu}</h4>
-                <div className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-blue-400 transition-colors">
+                <h4 className="text-sm font-bold text-slate-500 mb-1 uppercase tracking-wider">{item.titleGu}</h4>
+                <div className="text-xl font-bold text-white mb-2 leading-tight group-hover:text-blue-400 transition-colors">
                   {officer ? officer.name : item.squad}
                 </div>
                 
                 {officer && (
                   <div className="space-y-1 mb-4">
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
-                      <Shield size={10} className="text-blue-500" />
+                    <p className="text-xs text-slate-400 flex items-center gap-1 font-medium">
+                      <Shield size={12} className="text-blue-500" />
                       {officer.rank}
                     </p>
-                    <p className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
-                      <Phone size={10} className="text-slate-600" />
+                    <p className="text-xs text-slate-500 flex items-center gap-1 font-mono">
+                      <Phone size={12} className="text-slate-600" />
                       {officer.phone}
                     </p>
                   </div>

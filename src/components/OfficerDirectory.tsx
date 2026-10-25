@@ -154,12 +154,12 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-slate-800 bg-slate-950/50">
-              <th className="px-6 py-4 text-sm font-semibold text-slate-300">{lang === 'gu' ? 'કેટેગરી' : 'Cat'}</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-300">{lang === 'gu' ? 'સ્કોડ' : 'Squad'}</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-300">{lang === 'gu' ? 'નામ' : 'Name'}</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-300">{lang === 'gu' ? 'હોદ્દો' : 'Rank'}</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-300">{lang === 'gu' ? 'મોબાઇલ' : 'Phone'}</th>
-              <th className="px-6 py-4 text-sm font-semibold text-slate-300 text-right">{lang === 'gu' ? 'ક્રિયાઓ' : 'Actions'}</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-widest">{lang === 'gu' ? 'કેટેગરી' : 'Cat'}</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-widest">{lang === 'gu' ? 'સ્કોડ' : 'Squad'}</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-widest">{lang === 'gu' ? 'નામ' : 'Name'}</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-widest">{lang === 'gu' ? 'હોદ્દો' : 'Rank'}</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-widest">{lang === 'gu' ? 'મોબાઇલ' : 'Phone'}</th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-widest text-right">{lang === 'gu' ? 'ક્રિયાઓ' : 'Actions'}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
@@ -188,10 +188,10 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
                       {o.category}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-300 font-mono">{o.squad}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-white">{o.name}</td>
-                  <td className="px-6 py-4 text-sm text-slate-400">{o.rank}</td>
-                  <td className="px-6 py-4 text-sm text-blue-400 font-mono">{o.phone}</td>
+                  <td className="px-6 py-4 text-base text-slate-300 font-mono">{o.squad}</td>
+                  <td className="px-6 py-4 text-base font-bold text-white">{o.name}</td>
+                  <td className="px-6 py-4 text-base text-slate-400">{o.rank}</td>
+                  <td className="px-6 py-4 text-base text-blue-400 font-mono">{o.phone}</td>
                   <td className="px-6 py-4 text-right space-x-2">
                     <button
                       onClick={() => {

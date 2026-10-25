@@ -41,7 +41,7 @@ import {
 } from './utils/whatsapp';
 import { supabase, TABLES } from './utils/supabaseClient';
 
-function Sidebar({ lang }: { lang: 'gu' | 'en' }) {
+function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean, onClose: () => void }) {
   const location = useLocation();
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: lang === 'gu' ? 'ડેશબોર્ડ' : 'Dashboard' },
@@ -51,49 +51,65 @@ function Sidebar({ lang }: { lang: 'gu' | 'en' }) {
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-slate-950 border-r border-slate-800 h-screen sticky top-0 overflow-y-auto">
-      <div className="p-6">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-            <Shield className="text-white" size={24} />
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-950 border-r border-slate-800 h-screen transition-transform duration-300 transform lg:translate-x-0 lg:static lg:flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-900/30">
+                <Shield className="text-white" size={28} />
+              </div>
+              <div>
+                <h1 className="text-white font-bold text-lg leading-tight">Gujarat Police</h1>
+                <p className="text-slate-500 text-[11px] uppercase tracking-widest font-extrabold">Night Duty</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="lg:hidden p-2 text-slate-400 hover:text-white">
+              <X size={20} />
+            </button>
           </div>
-          <div>
-            <h1 className="text-white font-bold leading-tight">Gujarat Police</h1>
-            <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold">Night Duty System</p>
-          </div>
+
+          <nav className="space-y-3">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => { if (window.innerWidth < 1024) onClose(); }}
+                className={`flex items-center gap-4 px-5 py-4 rounded-2xl text-lg font-bold transition-all border ${
+                  location.pathname === item.path 
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-900/30' 
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200 border-transparent'
+                }`}
+              >
+                <item.icon size={22} />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        <nav className="space-y-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                location.pathname === item.path 
-                  ? 'bg-blue-600/10 text-blue-500 shadow-sm' 
-                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-              }`}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-auto p-6 border-t border-slate-900">
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock size={14} className="text-blue-500" />
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System Status</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-xs text-slate-200 font-medium">Supabase Connected</span>
+        <div className="mt-auto p-6 border-t border-slate-900">
+          <div className="bg-slate-900/50 rounded-2xl p-5 border border-slate-800">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock size={16} className="text-blue-500" />
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">System Connection</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"></div>
+              <span className="text-sm text-slate-200 font-bold tracking-tight">Cloud Secure</span>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -120,6 +136,7 @@ export default function App() {
 
   const [whatsAppModal, setWhatsAppModal] = useState({ isOpen: false, title: '', recipientName: '', recipientPhone: '', message: '' });
   const [swapModal, setSwapModal] = useState({ isOpen: false, date: '', dutyColumnId: '', currentSquad: '' });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAlertSettingsOpen, setIsAlertSettingsOpen] = useState(false);
   const [isRollCallOpen, setIsRollCallOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
@@ -204,6 +221,56 @@ export default function App() {
     setWhatsAppModal({ isOpen: true, title: `PSI નાઈટ ડ્યુટી પત્રક`, recipientName: 'PSI ગ્રૂપ', recipientPhone: '', message });
   };
 
+  const handleImportPaste = async (text: string) => {
+    const lines = text.trim().split('\n');
+    const newRows: DutyRow[] = [];
+
+    for (const line of lines) {
+      // Split by tab (Excel/Google Sheets default) or comma
+      const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
+      
+      if (cols.length >= 7) {
+        newRows.push({
+          date: cols[0],
+          dayName: cols[1],
+          dayNameEn: cols[1], // Fallback
+          communalPi: cols[2],
+          divisionPi: cols[3],
+          cmMorchoPsi: cols[4],
+          campusPsi: cols[5],
+          vvipPsi: cols[6],
+        });
+      }
+    }
+
+    if (newRows.length > 0) {
+      setRoster(newRows);
+      
+      if (supabase) {
+        const { error } = await supabase.from(TABLES.ROSTER).upsert(
+          newRows.map(r => ({
+            date: r.date,
+            day_name: r.dayName,
+            communal_pi: r.communalPi,
+            division_pi: r.divisionPi,
+            cm_morcho_psi: r.cmMorchoPsi,
+            campus_psi: r.campusPsi,
+            vvip_psi: r.vvipPsi
+          })),
+          { onConflict: 'date' }
+        );
+        
+        if (error) {
+          showToast(`Error saving: ${error.message}`);
+        } else {
+          showToast(`Successfully imported ${newRows.length} rows to Supabase!`);
+        }
+      } else {
+        showToast(`Imported ${newRows.length} rows (Local only - Supabase disconnected)`);
+      }
+    }
+  };
+
   const handleApplySwap = async (date: string, dutyColumnId: string, newSquad: string) => {
     const updatedRoster = roster.map(row => row.date === date ? { ...row, [dutyColumnId]: newSquad } : row);
     setRoster(updatedRoster);
@@ -244,9 +311,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="flex min-h-screen bg-slate-950 text-slate-100 selection:bg-blue-500/30">
-        <Sidebar lang={lang} />
+        <Sidebar lang={lang} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <Header
             currentDate={currentDate}
             isNightShiftActive={isNightShiftActive}
@@ -260,6 +327,7 @@ export default function App() {
             lang={lang}
             onToggleLang={() => setLang(l => l === 'gu' ? 'en' : 'gu')}
             onOpenBroadcastToday={() => handleOpenPiBroadcast(selectedDutyRow)}
+            onMenuClick={() => setIsSidebarOpen(true)}
           />
 
           <main className="p-4 md:p-8 flex-1 overflow-y-auto no-print">
@@ -355,6 +423,7 @@ export default function App() {
                     const row = roster.find(r => r.date === date);
                     setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: row ? (row as any)[id] : '' });
                   }}
+                  onImportPaste={handleImportPaste}
                   lang={lang}
                 />
               } />
