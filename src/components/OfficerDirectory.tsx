@@ -155,14 +155,12 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
         let category: 'PI' | 'PSI' = 'PSI';
 
         // 1. Identify Rank & Category
-        // Priority to exact matches or common abbreviations
         const rankIdx = cols.findIndex(c => /^(PI|PSI|WPI|WPSI)$/i.test(c) || /(પોલીસ ઇન્સ્પેક્ટર|પોલીસ સબ ઇન્સ્પેક્ટર)/.test(c));
         if (rankIdx !== -1) {
           rankStr = cols[rankIdx];
           const upper = rankStr.toUpperCase();
           category = (upper.includes('PI') && !upper.includes('PSI')) ? 'PI' : 'PSI';
         } else {
-          // Fallback search for rank anywhere
           const fallbackRankIdx = cols.findIndex(c => /PI|PSI|WPI|WPSI/i.test(c));
           if (fallbackRankIdx !== -1) {
              rankStr = cols[fallbackRankIdx];
@@ -171,7 +169,7 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
           }
         }
 
-        // 2. Identify Phone
+        // 2. Identify Phone (Any string with 10 digits or 8+ if multiple parts)
         const phoneIdx = cols.findIndex(c => {
           const digitsOnly = c.replace(/\D/g, '');
           return digitsOnly.length >= 10 && !c.includes('સ્કોડ') && !c.includes('Squad');
@@ -180,22 +178,21 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
           phoneStr = cols[phoneIdx].replace(/[^\d]/g, '');
         }
 
-        // 3. Identify Name
+        // 3. Identify Name (Contains 'શ્રી', 'સુ. શ્રી' or starts with common honorifics)
         const nameIdx = cols.findIndex(c => c.includes('શ્રી') || c.startsWith('Mr.') || c.startsWith('Ms.'));
         if (nameIdx !== -1) {
           nameStr = cols[nameIdx];
         }
 
         // 4. Identify Squad
-        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('Squad') || c.includes('ફરજની') || c.includes('જગ્યા'));
+        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('Squad') || c.includes('ફરજની') || c.includes('જગ્યા') || c.includes('સ્કોડ-'));
         if (squadIdx !== -1) {
           squadStr = cols[squadIdx];
         }
 
-        // 5. Fallback heuristics for missing columns
         const usedIndices = new Set([rankIdx, phoneIdx, nameIdx, squadIdx].filter(idx => idx !== -1));
         
-        // If name still missing, look for longest unused string that isn't a number
+        // 5. Fallback heuristics
         if (!nameStr) {
           const candidates = cols.map((c, idx) => ({ c, idx }))
             .filter(({ c, idx }) => !usedIndices.has(idx) && idx !== 0 && c.length > 3 && !/^\d+$/.test(c.replace(/\D/g, '')));
@@ -206,7 +203,6 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
           }
         }
 
-        // If squad still missing, look for remaining strings
         if (!squadStr) {
           const candidates = cols.map((c, idx) => ({ c, idx }))
             .filter(({ c, idx }) => !usedIndices.has(idx) && idx !== 0 && c.length > 2);
@@ -307,7 +303,7 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all cursor-pointer shadow-xl shadow-blue-900/20"
           >
             <Plus size={24} />
-            {lang === 'gu' ? 'નવા ઉમેરો' : 'ADD NEW'}
+            ADD NEW
           </button>
         </div>
       </div>

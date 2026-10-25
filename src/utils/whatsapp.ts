@@ -36,10 +36,15 @@ export function createIndividualDutyMessage(params: {
   const officerName = params.officer ? params.officer.name : params.squadText;
   const officerRank = params.officer ? params.officer.rank : 'પોલીસ અધિકારી';
   const phone = params.officer ? (params.officer.phone || 'ઉપલબ્ધ નથી') : 'ઉપલબ્ધ નથી';
+  
+  // Format squad string to have spaces around hyphen and strip leading zeros
+  const squadFormatted = params.squadText.includes('-') 
+    ? params.squadText.replace('-', ' - ').replace(/[૦0](\d|[૦-૯])/g, '$1')
+    : params.squadText;
 
   return `🚨 *ગુજરાત પોલીસ - નાઈટ ડ્યુટી* 🚨
 📅 તારીખ: ${params.date} (${params.dayName})
-      સ્કોડ : ${params.squadText}
+      સ્કોડ : ${squadFormatted}
 👮 નામ: ${officerName}
 🏷️ હોદ્દો: ${officerRank}
 🛡️ નાઈટ નો પ્રકાર: ${params.dutyTitleGu}
@@ -61,13 +66,11 @@ export function createPiBroadcastMessage(params: {
     const name = o ? o.name : s;
     const rank = o ? o.rank : 'PI';
     const phone = o ? (o.phone || '').replace(/\s+/g, '') : '';
-    // Format squad string to have spaces around hyphen and strip leading zeros in numbers (e.g. ૦૪ -> ૪)
-    // ૦-૯ are Gujarati digits \u0AE6-\u0AEF
     const squadFormatted = s.includes('-') 
       ? s.replace('-', ' - ').replace(/[૦0](\d|[૦-૯])/g, '$1')
       : s;
 
-    return `• ${dutyType}\n  નામ: ${name}\n  સ્કોડ : ${squadFormatted}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
+    return `• ${dutyType}\nનામ: ${name}\nસ્કોડ : ${squadFormatted}\nહોદ્દો: ${rank}\nમોબાઇલ: ${phone}`;
   };
 
   return `⭐ ગુજરાત પોલીસ - PI શ્રી નાઈટ ⭐
@@ -99,7 +102,7 @@ export function createPsiBroadcastMessage(params: {
       ? s.replace('-', ' - ').replace(/[૦0](\d|[૦-૯])/g, '$1')
       : s;
 
-    return `• ${dutyType}\n  નામ: ${name}\n  સ્કોડ : ${squadFormatted}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
+    return `• ${dutyType}\nનામ: ${name}\nસ્કોડ : ${squadFormatted}\nહોદ્દો: ${rank}\nમોબાઇલ: ${phone}`;
   };
 
   const nextCmDetails = nextRow 

@@ -196,7 +196,7 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
           nameStr = cols[nameIdx];
         }
 
-        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('Squad') || c.includes('ફરજની') || c.includes('જગ્યા'));
+        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('Squad') || c.includes('ફરજની') || c.includes('જગ્યા') || c.includes('સ્કોડ-'));
         if (squadIdx !== -1) {
           squadStr = cols[squadIdx];
         }
@@ -317,9 +317,6 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
                 <div className="text-xs sm:text-sm font-black leading-tight uppercase tracking-tight">
                   PASTE IMPORT
                 </div>
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  {lang === 'gu' ? 'ઇમ્પોર્ટ' : 'IMPORT'}
-                </div>
               </div>
             </button>
 
@@ -337,9 +334,6 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
               <div className="text-left">
                 <div className="text-xs sm:text-sm font-black leading-tight uppercase tracking-tight">
                   ADD NEW
-                </div>
-                <div className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">
-                  {lang === 'gu' ? 'નવા ઉમેરો' : 'ADD NEW'}
                 </div>
               </div>
             </button>
