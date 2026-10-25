@@ -1,0 +1,5 @@
+{
+  "summary":  "Complete Supabase SQL setup script for Night Duty Monitoring System. Includes table definitions for Officers and Roster, Row Level Security (RLS) policies for public access, and helpful comments for database administrators.",
+  "updatedAt":  "2026-10-25T07:48:36.119500156Z",
+  "userFacing":  true
+}

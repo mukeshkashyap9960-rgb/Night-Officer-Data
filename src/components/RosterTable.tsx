@@ -76,21 +76,21 @@ export const RosterTable: React.FC<RosterTableProps> = ({
     return (
       <div className="group relative py-5 px-6 hover:bg-blue-600/10 transition-all cursor-default rounded-2xl border border-transparent hover:border-blue-500/30 shadow-sm">
         <div className="flex flex-col">
-          <span className="text-lg font-black text-white leading-tight mb-1">{officer ? officer.name : squad}</span>
-          <span className="text-sm text-slate-400 font-mono font-bold uppercase tracking-tight">{squad}</span>
+          <span className="text-xl font-black text-white leading-tight mb-1 tracking-tight">{officer ? officer.name : squad}</span>
+          <span className="text-base text-slate-400 font-mono font-black uppercase tracking-tight">{squad}</span>
         </div>
         <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex gap-2 transition-all">
           <button
             onClick={() => onSendWhatsApp(squad, dutyKey, dutyTitle, row.date, row.dayName)}
-            className="p-2.5 bg-slate-900 border border-slate-700 text-emerald-500 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-xl"
+            className="p-3 bg-slate-900 border border-slate-700 text-emerald-500 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-xl"
           >
-            <MessageSquare size={16} />
+            <MessageSquare size={18} />
           </button>
           <button
             onClick={() => onSwapDuty(row.date, dutyKey)}
-            className="p-2.5 bg-slate-900 border border-slate-700 text-slate-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-xl"
+            className="p-3 bg-slate-900 border border-slate-700 text-slate-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-xl"
           >
-            <ArrowRightLeft size={16} />
+            <ArrowRightLeft size={18} />
           </button>
         </div>
       </div>
@@ -160,18 +160,18 @@ export const RosterTable: React.FC<RosterTableProps> = ({
                   key={row.date} 
                   className={`group transition-all ${row.date === currentDateStr ? 'bg-blue-600/10' : 'hover:bg-slate-800/40'}`}
                 >
-                  <td className="py-7 px-10">
+                  <td className="py-10 px-10">
                     <div className="flex flex-col">
-                      <span className="text-2xl font-black text-white leading-none mb-1">{row.dayName}</span>
-                      <span className="text-sm font-mono font-bold text-blue-500 mt-1 tracking-wider uppercase">{row.date}</span>
+                      <span className="text-3xl font-black text-white leading-none mb-2 tracking-tighter">{row.dayName}</span>
+                      <span className="text-base font-mono font-black text-blue-500 tracking-widest uppercase">{row.date}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-3 border-l border-slate-800/30">{renderCell(row.communalPi, 'communalPi', 'કોમ્યુનલ નાઈટ', row)}</td>
-                  <td className="py-3 px-3 border-l border-slate-800/30">{renderCell(row.divisionPi, 'divisionPi', 'ડીવીઝન નાઈટ', row)}</td>
-                  <td className="py-3 px-3 border-l border-slate-800/30">{renderCell(row.cmMorchoPsi, 'cmMorchoPsi', 'CM મોરચો', row)}</td>
-                  <td className="py-3 px-3 border-l border-slate-800/30">{renderCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}</td>
-                  <td className="py-3 px-3 border-l border-slate-800/30">{renderCell(row.vvipPsi, 'vvipPsi', 'VVIP બંદોબસ્ત', row)}</td>
-                  <td className="py-7 px-10 text-right border-l border-slate-800/30">
+                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.communalPi, 'communalPi', 'કોમ્યુનલ નાઈટ', row)}</td>
+                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.divisionPi, 'divisionPi', 'ડીવીઝન નાઈટ', row)}</td>
+                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.cmMorchoPsi, 'cmMorchoPsi', 'CM મોરચો', row)}</td>
+                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}</td>
+                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.vvipPsi, 'vvipPsi', 'VVIP બંદોબસ્ત', row)}</td>
+                  <td className="py-10 px-10 text-right border-l border-slate-800/30">
                     <div className="flex flex-col items-end gap-2">
                       <button 
                         onClick={() => onPiBroadcast(row)}

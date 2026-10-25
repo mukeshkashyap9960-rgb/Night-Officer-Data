@@ -29,6 +29,7 @@ import { RosterTable } from './components/RosterTable';
 import { WhatsAppModal } from './components/WhatsAppModal';
 import { DutySwapModal } from './components/DutySwapModal';
 import { OfficerDirectory } from './components/OfficerDirectory';
+import { OfficerListView } from './components/OfficerListView';
 import { AlertSettingsModal } from './components/AlertSettingsModal';
 import { DutyAnalyticsModal } from './components/DutyAnalyticsModal';
 import { RollCallModal } from './components/RollCallModal';
@@ -46,7 +47,8 @@ function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: lang === 'gu' ? 'ડેશબોર્ડ' : 'Dashboard' },
     { path: '/roster', icon: TableIcon, label: lang === 'gu' ? 'ડ્યુટી પત્રક' : 'Full Roster' },
-    { path: '/officers', icon: Users, label: lang === 'gu' ? 'અધિકારીઓ' : 'Officers' },
+    { path: '/list', icon: Users, label: lang === 'gu' ? 'અધિકારી લિસ્ટ' : 'User List View' },
+    { path: '/officers', icon: Settings, label: lang === 'gu' ? 'ડાયરેક્ટરી સેટઅપ' : 'Manage Officers' },
     { path: '/analytics', icon: BarChart3, label: lang === 'gu' ? 'એનાલિટિક્સ' : 'Analytics' },
   ];
 
@@ -448,6 +450,7 @@ export default function App() {
                 />
               } />
 
+              <Route path="/list" element={<OfficerListView lang={lang} />} />
               <Route path="/officers" element={<OfficerDirectory lang={lang} />} />
               
               <Route path="/analytics" element={
@@ -488,3 +491,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
