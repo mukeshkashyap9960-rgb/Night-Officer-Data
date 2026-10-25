@@ -20,7 +20,8 @@ import {
   Edit2,
   Trash2,
   Save,
-  Check
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 import { Officer } from '../types/roster';
 import { DEFAULT_OFFICERS } from '../data/rosterData';
@@ -49,6 +50,9 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
   const [isAddOfficerModalOpen, setIsAddOfficerModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [pastedData, setPastedData] = useState('');
+  const [officerToDelete, setOfficerToDelete] = useState<Officer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOfficers();
@@ -129,14 +133,32 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
     setIsAddOfficerModalOpen(false);
   }
 
-  async function handleDeleteOfficer(id: string) {
-    if (!window.confirm(lang === 'gu' ? 'શું તમે આ અધિકારીને ડિલીટ કરવા માંગો છો?' : 'Delete this officer?')) return;
-    const updated = await removeOfficer(id);
-    setOfficers(updated);
+  function handleDeleteOfficer(officer: Officer) {
+    setOfficerToDelete(officer);
+  }
+
+  async function confirmDeleteOfficer() {
+    if (!officerToDelete) return;
+    setIsDeleting(true);
+    try {
+      const removedOfficer = officerToDelete;
+      const updated = await removeOfficer(removedOfficer);
+      setOfficers(updated);
+      setOfficerToDelete(null);
+      setDeleteNotice(
+        lang === 'gu'
+          ? `શ્રી ${removedOfficer.name} (${formatSquadText(removedOfficer.squad) || removedOfficer.squad}) લિસ્ટમાંથી સફળતાપૂર્વક ડિલીટ થયા છે.`
+          : `${removedOfficer.name} has been deleted successfully.`
+      );
+      setTimeout(() => setDeleteNotice(null), 4000);
+    } catch (err) {
+      console.error('Delete officer error', err);
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   async function handleClearAllOfficers() {
-    if (!window.confirm(lang === 'gu' ? 'શું તમે તમામ અધિકારીઓ ડિલીટ કરવા માંગો છો?' : 'Clear all officers?')) return;
     await persistOfficers([], 'replace');
     setOfficers([]);
   }
@@ -275,6 +297,22 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700 pb-20">
+      {/* Notification Banner */}
+      {deleteNotice && (
+        <div className="bg-rose-950/70 border border-rose-500/40 text-rose-200 px-6 py-4 rounded-2xl flex items-center justify-between shadow-xl animate-in fade-in duration-200">
+          <div className="flex items-center gap-3 font-bold text-sm">
+            <Check size={20} className="text-rose-400 shrink-0" />
+            <span>{deleteNotice}</span>
+          </div>
+          <button 
+            onClick={() => setDeleteNotice(null)}
+            className="text-rose-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
       {/* Dynamic Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 bg-slate-900/40 p-8 rounded-[3rem] border border-slate-800/50 backdrop-blur-sm">
         <div className="space-y-2">
@@ -510,9 +548,9 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
                   </button>
 
                   <button
-                    onClick={() => handleDeleteOfficer(o.id)}
-                    className="p-3 text-slate-400 hover:text-white bg-slate-950 hover:bg-rose-600 rounded-2xl transition-all cursor-pointer border border-slate-800 hover:border-rose-500 shadow-sm"
-                    title={lang === 'gu' ? 'ડિલીટ કરો' : 'Delete Officer'}
+                    onClick={() => handleDeleteOfficer(o)}
+                    className="p-3 text-rose-400 hover:text-white bg-slate-950 hover:bg-rose-600 rounded-2xl transition-all cursor-pointer border border-rose-950/60 hover:border-rose-500 shadow-sm"
+                    title={lang === 'gu' ? 'અધિકારી ડિલીટ કરો' : 'Delete Officer'}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -702,6 +740,83 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {officerToDelete && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-8 text-center space-y-6">
+              <div className="w-20 h-20 bg-rose-500/10 border-2 border-rose-500/30 rounded-full flex items-center justify-center mx-auto text-rose-500 shadow-xl shadow-rose-950/50">
+                <Trash2 size={36} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-white">
+                  {lang === 'gu' ? 'અધિકારી ડિલીટ કરવાની ખાતરી' : 'Confirm Officer Deletion'}
+                </h3>
+                <p className="text-slate-400 text-sm mt-2">
+                  {lang === 'gu'
+                    ? 'શું તમે ખરેખર આ અધિકારીની વિગતો લિસ્ટમાંથી ડિલીટ કરવા માંગો છો?'
+                    : 'Are you sure you want to permanently delete this officer from the list?'}
+                </p>
+              </div>
+
+              {/* Officer Details Preview */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-black px-3 py-0.5 rounded-full uppercase border ${
+                    officerToDelete.category === 'PI' 
+                      ? 'bg-blue-950/60 text-blue-400 border-blue-800' 
+                      : 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
+                  }`}>
+                    {officerToDelete.category}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-400">
+                    {formatSquadText(officerToDelete.squad) || officerToDelete.squad}
+                  </span>
+                </div>
+                <div className="text-lg font-black text-white">
+                  {officerToDelete.name}
+                </div>
+                <div className="text-xs text-slate-400 font-bold flex items-center gap-2">
+                  <span>{officerToDelete.rank || 'પોલીસ અધિકારી'}</span>
+                  {officerToDelete.phone && (
+                    <>
+                      <span>•</span>
+                      <span className="font-mono text-emerald-400">{officerToDelete.phone}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOfficerToDelete(null)}
+                  disabled={isDeleting}
+                  className="flex-1 py-3.5 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl font-bold transition-all cursor-pointer text-xs uppercase tracking-wider"
+                >
+                  {lang === 'gu' ? 'રદ કરો (Cancel)' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteOfficer}
+                  disabled={isDeleting}
+                  className="flex-1 py-3.5 px-5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black transition-all cursor-pointer shadow-lg shadow-rose-900/40 active:scale-95 text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      <span>{lang === 'gu' ? 'હા, ડિલીટ કરો' : 'Delete'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

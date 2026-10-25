@@ -102,10 +102,29 @@ export async function persistOfficers(officers: Officer[], mode: 'append' | 'rep
 
 /**
  * Deletes an officer from both LocalStorage and Supabase.
+ * Accepts either officer ID or the Officer object.
  */
-export async function removeOfficer(id: string): Promise<Officer[]> {
+export async function removeOfficer(target: string | Officer): Promise<Officer[]> {
   const current = loadOfficersFromLocal() || DEFAULT_OFFICERS;
-  const updated = current.filter(o => o.id !== id);
+  const targetId = typeof target === 'string' ? target : target.id;
+  const targetName = typeof target === 'object' ? target.name?.trim() : undefined;
+  const targetSquad = typeof target === 'object' ? target.squad?.trim() : undefined;
+
+  const updated = current.filter(o => {
+    // 1. Direct ID match
+    if (targetId && o.id) {
+      if (String(o.id) === String(targetId)) return false;
+    }
+    // 2. Object match by name & squad
+    if (targetName && o.name?.trim() === targetName) {
+      if (!targetSquad || o.squad?.trim() === targetSquad) return false;
+    }
+    // 3. Fallback: if target was passed as name string
+    if (targetId && o.name && o.name.trim() === targetId.trim()) {
+      return false;
+    }
+    return true;
+  });
 
   // 1. Update LocalStorage immediately
   saveOfficersToLocal(updated);
@@ -113,7 +132,11 @@ export async function removeOfficer(id: string): Promise<Officer[]> {
   // 2. Delete from Supabase if connected
   if (supabase) {
     try {
-      await supabase.from(TABLES.OFFICERS).delete().eq('id', id);
+      if (targetId && !targetId.toString().startsWith('off-') && !targetId.toString().startsWith('pi-') && !targetId.toString().startsWith('psi-')) {
+        await supabase.from(TABLES.OFFICERS).delete().eq('id', targetId);
+      } else if (targetName) {
+        await supabase.from(TABLES.OFFICERS).delete().eq('name', targetName);
+      }
     } catch (err) {
       console.warn('Supabase delete error on removeOfficer', err);
     }
