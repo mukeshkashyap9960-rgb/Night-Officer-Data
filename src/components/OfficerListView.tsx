@@ -25,14 +25,22 @@ import {
 import { Officer } from '../types/roster';
 import { DEFAULT_OFFICERS } from '../data/rosterData';
 import { supabase, TABLES } from '../utils/supabaseClient';
+import { 
+  fetchAndSyncOfficers, 
+  persistOfficers, 
+  removeOfficer, 
+  upsertOfficer,
+  loadOfficersFromLocal,
+  saveOfficersToLocal
+} from '../utils/storage';
 
 interface OfficerListViewProps {
   lang: 'gu' | 'en';
 }
 
 export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
-  const [officers, setOfficers] = useState<Officer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [officers, setOfficers] = useState<Officer[]>(() => loadOfficersFromLocal() || DEFAULT_OFFICERS);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'PI' | 'PSI'>('ALL');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -43,26 +51,21 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
 
   useEffect(() => {
     fetchOfficers();
+
+    const handleOfficersUpdated = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setOfficers(e.detail);
+      }
+    };
+
+    window.addEventListener('officers_updated', handleOfficersUpdated);
+    return () => window.removeEventListener('officers_updated', handleOfficersUpdated);
   }, []);
 
   async function fetchOfficers() {
-    if (!supabase) {
-      setOfficers(DEFAULT_OFFICERS);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-    const { data, error } = await supabase
-      .from(TABLES.OFFICERS)
-      .select('*')
-      .order('category', { ascending: true })
-      .order('squad', { ascending: true });
-
-    if (!error && data && data.length > 0) {
-      setOfficers(data);
-    } else {
-      setOfficers(DEFAULT_OFFICERS);
-    }
+    const data = await fetchAndSyncOfficers();
+    setOfficers(data);
     setLoading(false);
   }
 
@@ -112,58 +115,29 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
     e.preventDefault();
     if (!editingOfficer) return;
 
-    if (!supabase) {
-      if (editingOfficer.id && !editingOfficer.id.toString().startsWith('new-')) {
-        setOfficers(prev => prev.map(o => o.id === editingOfficer.id ? editingOfficer : o));
-      } else {
-        const createdOfficer = { ...editingOfficer, id: 'local-' + Date.now() };
-        setOfficers(prev => [createdOfficer, ...prev]);
-      }
-      setEditingOfficer(null);
-      setIsAddOfficerModalOpen(false);
-      return;
-    }
+    const target: Officer = {
+      ...editingOfficer,
+      id: editingOfficer.id && !editingOfficer.id.toString().startsWith('new-') 
+        ? editingOfficer.id 
+        : 'off-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6)
+    };
 
-    const { id, ...officerData } = editingOfficer;
-    let result;
-
-    if (id && !id.toString().startsWith('new-')) {
-      result = await supabase
-        .from(TABLES.OFFICERS)
-        .update(officerData)
-        .eq('id', id);
-    } else {
-      result = await supabase
-        .from(TABLES.OFFICERS)
-        .insert([officerData]);
-    }
-
-    if (!result.error) {
-      setEditingOfficer(null);
-      setIsAddOfficerModalOpen(false);
-      fetchOfficers();
-    } else {
-      alert(`Error saving officer: ${result.error.message}`);
-    }
+    const updated = await upsertOfficer(target);
+    setOfficers(updated);
+    setEditingOfficer(null);
+    setIsAddOfficerModalOpen(false);
   }
 
   async function handleDeleteOfficer(id: string) {
     if (!window.confirm(lang === 'gu' ? 'શું તમે આ અધિકારીને ડિલીટ કરવા માંગો છો?' : 'Delete this officer?')) return;
-    if (!supabase) {
-      setOfficers(prev => prev.filter(o => o.id !== id));
-      return;
-    }
+    const updated = await removeOfficer(id);
+    setOfficers(updated);
+  }
 
-    const { error } = await supabase
-      .from(TABLES.OFFICERS)
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      alert(`Error deleting officer: ${error.message} (Code: ${error.code})`);
-    } else {
-      fetchOfficers();
-    }
+  async function handleClearAllOfficers() {
+    if (!window.confirm(lang === 'gu' ? 'શું તમે તમામ અધિકારીઓ ડિલીટ કરવા માંગો છો?' : 'Clear all officers?')) return;
+    await persistOfficers([], 'replace');
+    setOfficers([]);
   }
 
   async function handleProcessImport(mode: 'append' | 'replace') {
@@ -232,34 +206,24 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
     }
 
     if (newOfficers.length > 0) {
-      if (supabase) {
-        try {
-          if (mode === 'replace') {
-            const { error: delError } = await supabase.from(TABLES.OFFICERS).delete().neq('name', 'DELETE_ALL_HACK');
-            if (delError) throw delError;
-          }
+      const preparedOfficers: Officer[] = newOfficers.map((o, idx) => ({
+        id: 'off-' + Date.now() + '-' + idx + '-' + Math.random().toString(36).substring(2, 6),
+        category: o.category || 'PSI',
+        squad: o.squad || 'સ્કોડ-૦૧',
+        name: o.name || '',
+        rank: o.rank || '',
+        phone: o.phone || '',
+        branch: o.branch || ''
+      }));
 
-          const { error: insError } = await supabase.from(TABLES.OFFICERS).insert(newOfficers);
-          if (insError) throw insError;
-
-          setIsImportModalOpen(false);
-          setPastedData('');
-          fetchOfficers();
-          alert(`સફળતાપૂર્વક ${newOfficers.length} અધિકારીઓ સેવ થયા છે!`);
-        } catch (err: any) {
-          console.error('Import Error:', err);
-          alert(`ભૂલ આવી છે: ${err.message || 'Check data format'}`);
-        }
-      } else {
-        if (mode === 'replace') {
-          setOfficers(newOfficers as Officer[]);
-        } else {
-          setOfficers(prev => [...(newOfficers as Officer[]), ...prev]);
-        }
-        setIsImportModalOpen(false);
-        setPastedData('');
-        alert(`સફળતાપૂર્વક ${newOfficers.length} અધિકારીઓ ઉમેરાયા! (Local Mode)`);
-      }
+      await persistOfficers(preparedOfficers, mode);
+      const updated = loadOfficersFromLocal() || preparedOfficers;
+      setOfficers(updated);
+      setIsImportModalOpen(false);
+      setPastedData('');
+      alert(lang === 'gu' 
+        ? `સફળતાપૂર્વક ${preparedOfficers.length} અધિકારીઓની યાદી સેવ થઈ ગઈ છે! હવે પેજ રીફ્રેશ કરવા છતાં ડેટા સેવ રહેશે.` 
+        : `Successfully saved ${preparedOfficers.length} officers! Persisted permanently.`);
     }
   }
 

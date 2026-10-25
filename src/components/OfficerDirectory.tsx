@@ -17,14 +17,21 @@ import {
 import { Officer } from '../types/roster';
 import { DEFAULT_OFFICERS } from '../data/rosterData';
 import { supabase, TABLES } from '../utils/supabaseClient';
+import { 
+  fetchAndSyncOfficers, 
+  persistOfficers, 
+  removeOfficer, 
+  upsertOfficer,
+  loadOfficersFromLocal
+} from '../utils/storage';
 
 interface OfficerDirectoryProps {
   lang: 'gu' | 'en';
 }
 
 export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
-  const [officers, setOfficers] = useState<Officer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [officers, setOfficers] = useState<Officer[]>(() => loadOfficersFromLocal() || DEFAULT_OFFICERS);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'PI' | 'PSI'>('ALL');
   const [editingOfficer, setEditingOfficer] = useState<Officer | null>(null);
@@ -33,32 +40,22 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
   const [pastedData, setPastedData] = useState('');
 
   useEffect(() => {
-    if (supabase) {
-      fetchOfficers();
-    } else {
-      setOfficers(DEFAULT_OFFICERS);
-      setLoading(false);
-    }
+    fetchOfficers();
+
+    const handleOfficersUpdated = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setOfficers(e.detail);
+      }
+    };
+
+    window.addEventListener('officers_updated', handleOfficersUpdated);
+    return () => window.removeEventListener('officers_updated', handleOfficersUpdated);
   }, []);
 
   async function fetchOfficers() {
-    if (!supabase) {
-      setOfficers(DEFAULT_OFFICERS);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-    const { data, error } = await supabase
-      .from(TABLES.OFFICERS)
-      .select('*')
-      .order('category', { ascending: true })
-      .order('squad', { ascending: true });
-
-    if (!error && data && data.length > 0) {
-      setOfficers(data);
-    } else {
-      setOfficers(DEFAULT_OFFICERS);
-    }
+    const data = await fetchAndSyncOfficers();
+    setOfficers(data);
     setLoading(false);
   }
 
@@ -105,68 +102,46 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
 
   async function handleSaveOfficer(e: React.FormEvent) {
     e.preventDefault();
-    if (!editingOfficer || !supabase) return;
+    if (!editingOfficer) return;
 
-    const { id, ...officerData } = editingOfficer;
-    let result;
+    const target: Officer = {
+      ...editingOfficer,
+      id: editingOfficer.id && !editingOfficer.id.toString().startsWith('new-') 
+        ? editingOfficer.id 
+        : 'off-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6)
+    };
 
-    if (id && !id.toString().startsWith('new-')) {
-      result = await supabase
-        .from(TABLES.OFFICERS)
-        .update(officerData)
-        .eq('id', id);
-    } else {
-      result = await supabase
-        .from(TABLES.OFFICERS)
-        .insert([officerData]);
-    }
-
-    if (!result.error) {
-      setEditingOfficer(null);
-      setIsAddOfficerModalOpen(false);
-      fetchOfficers();
-    }
+    const updated = await upsertOfficer(target);
+    setOfficers(updated);
+    setEditingOfficer(null);
+    setIsAddOfficerModalOpen(false);
   }
 
   async function handleDeleteOfficer(id: string) {
     if (!window.confirm(lang === 'gu' ? 'શું તમે આ અધિકારીને ડિલીટ કરવા માંગો છો?' : 'Delete this officer?')) return;
-    if (!supabase) return;
-
-    const { error } = await supabase
-      .from(TABLES.OFFICERS)
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      alert(`Error deleting officer: ${error.message} (Code: ${error.code})`);
-    } else {
-      fetchOfficers();
-    }
+    const updated = await removeOfficer(id);
+    setOfficers(updated);
   }
 
   async function handleProcessImport(mode: 'append' | 'replace') {
-    if (!pastedData.trim() || !supabase) return;
+    if (!pastedData.trim()) return;
 
     const lines = pastedData.trim().split('\n');
     const newOfficers: Partial<Officer>[] = [];
 
     // Header detection logic
-    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'designation', 'category'];
+    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'designation', 'category', 'બ.નં.', 'ફરજની'];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
-      // Detect and skip header row
       const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
       if (i === 0) {
         const isHeader = cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)));
         if (isHeader) continue;
       }
 
-      // Format Mapping:
-      // 1. SrNo | 2. Rank | 3. Buckle | 4. Name | 5. Phone | 6. Squad/Branch
-      // Or standard 5-6 column variants
       if (cols.length >= 4) {
         let category: 'PI' | 'PSI' = 'PSI';
         let rankStr = '';
@@ -174,23 +149,25 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
         let phoneStr = '';
         let squadStr = '';
 
-        // If it looks like the 6-column police format provided by user:
-        // [Sr, Rank, Buckle, Name, Phone, Squad]
         if (cols.length >= 6) {
           rankStr = cols[1];
           nameStr = cols[3];
-          phoneStr = cols[4];
-          squadStr = cols[5];
+          const col4IsPhone = /[\d\s]{7,}/.test(cols[4]);
+          if (col4IsPhone) {
+            phoneStr = cols[4];
+            squadStr = cols[5];
+          } else {
+            squadStr = cols[4];
+            phoneStr = cols[5];
+          }
         } else {
-          // Fallback or other formats
           rankStr = cols[0];
           nameStr = cols[1];
           phoneStr = cols[2];
           squadStr = cols[3];
         }
 
-        // Determine category (Handle PI, PSI, WPI, WPSI)
-        const upperRank = rankStr.toUpperCase();
+        const upperRank = (rankStr || '').toUpperCase();
         if (upperRank.includes('PI') && !upperRank.includes('PSI')) {
           category = 'PI';
         } else {
@@ -199,33 +176,34 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
 
         newOfficers.push({
           category,
-          squad: squadStr || 'સ્કોડ-૦૦',
+          squad: squadStr || 'સ્કોડ-૦૧',
           name: nameStr,
           rank: rankStr,
-          phone: phoneStr.replace(/\s/g, ''), // Remove spaces from numbers
+          phone: phoneStr.replace(/\s/g, ''),
           branch: ''
         });
       }
     }
 
     if (newOfficers.length > 0) {
-      try {
-        if (mode === 'replace') {
-          const { error: delError } = await supabase.from(TABLES.OFFICERS).delete().neq('name', 'DELETE_ALL_HACK');
-          if (delError) throw delError;
-        }
+      const preparedOfficers: Officer[] = newOfficers.map((o, idx) => ({
+        id: 'off-' + Date.now() + '-' + idx + '-' + Math.random().toString(36).substring(2, 6),
+        category: o.category || 'PSI',
+        squad: o.squad || 'સ્કોડ-૦૧',
+        name: o.name || '',
+        rank: o.rank || '',
+        phone: o.phone || '',
+        branch: o.branch || ''
+      }));
 
-        const { error: insError } = await supabase.from(TABLES.OFFICERS).insert(newOfficers);
-        if (insError) throw insError;
-
-        setIsImportModalOpen(false);
-        setPastedData('');
-        fetchOfficers();
-        alert(`સફળતાપૂર્વક ${newOfficers.length} અધિકારીઓ સેવ થયા છે!`);
-      } catch (err: any) {
-        console.error('Import Error:', err);
-        alert(`ભૂલ આવી છે: ${err.message || 'Check your data format'}`);
-      }
+      await persistOfficers(preparedOfficers, mode);
+      const updated = loadOfficersFromLocal() || preparedOfficers;
+      setOfficers(updated);
+      setIsImportModalOpen(false);
+      setPastedData('');
+      alert(lang === 'gu' 
+        ? `સફળતાપૂર્વક ${preparedOfficers.length} અધિકારીઓની યાદી સેવ થઈ ગઈ છે!` 
+        : `Successfully saved ${preparedOfficers.length} officers!`);
     }
   }
 
@@ -242,14 +220,6 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
 
   return (
     <div className="space-y-8 pb-20">
-      {!supabase && (
-        <div className="bg-amber-900/20 border border-amber-800 text-amber-500 px-6 py-4 rounded-2xl flex items-center gap-4">
-          <X size={24} />
-          <p className="text-sm font-bold">
-            Supabase Not Connected. Changes will not be saved.
-          </p>
-        </div>
-      )}
 
       <div className="flex flex-col xl:flex-row md:items-center justify-between gap-6">
         <div>

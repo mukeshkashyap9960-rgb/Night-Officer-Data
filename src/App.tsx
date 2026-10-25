@@ -41,6 +41,13 @@ import {
   createPsiBroadcastMessage 
 } from './utils/whatsapp';
 import { supabase, TABLES } from './utils/supabaseClient';
+import { 
+  fetchAndSyncOfficers, 
+  fetchAndSyncRoster, 
+  saveRosterToLocal,
+  loadOfficersFromLocal,
+  loadRosterFromLocal
+} from './utils/storage';
 
 function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean, onClose: () => void }) {
   const location = useLocation();
@@ -106,7 +113,9 @@ function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean
             </div>
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20"></div>
-              <span className="text-sm text-slate-200 font-bold tracking-tight">Cloud Secure</span>
+              <span className="text-sm text-slate-200 font-bold tracking-tight">
+                {supabase ? 'Cloud Synchronized' : 'Local Persistent Storage'}
+              </span>
             </div>
           </div>
         </div>
@@ -118,10 +127,19 @@ function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean
 export default function App() {
   const [lang, setLang] = useState<'gu' | 'en'>('gu');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [roster, setRoster] = useState<DutyRow[]>([]);
-  const [officers, setOfficers] = useState<Officer[]>([]);
-  const [officersMap, setOfficersMap] = useState<Record<string, Officer>>({});
-  const [loading, setLoading] = useState(true);
+  const [roster, setRoster] = useState<DutyRow[]>(() => loadRosterFromLocal() || NOVEMBER_2026_ROSTER);
+  const [officers, setOfficers] = useState<Officer[]>(() => loadOfficersFromLocal() || DEFAULT_OFFICERS);
+  const [officersMap, setOfficersMap] = useState<Record<string, Officer>>(() => {
+    const initialOfficers = loadOfficersFromLocal() || DEFAULT_OFFICERS;
+    const map: Record<string, Officer> = {};
+    initialOfficers.forEach(o => {
+      if (o.squad) map[o.squad] = o;
+      if (o.name) map[o.name] = o;
+      if (o.id) map[o.id] = o;
+    });
+    return map;
+  });
+  const [loading, setLoading] = useState(false);
 
   const [alertConfig, setAlertConfig] = useState<AlertConfig>({
     soundEnabled: true,
@@ -146,63 +164,54 @@ export default function App() {
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
     initializeData();
-    return () => clearInterval(timer);
+
+    // Listen to global officer updates (from import, add, edit, delete in any component)
+    const handleOfficersUpdated = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setOfficers(e.detail);
+        const map: Record<string, Officer> = {};
+        e.detail.forEach((o: Officer) => {
+          if (o.squad) map[o.squad] = o;
+          if (o.name) map[o.name] = o;
+          if (o.id) map[o.id] = o;
+        });
+        setOfficersMap(map);
+      }
+    };
+
+    const handleRosterUpdated = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setRoster(e.detail);
+      }
+    };
+
+    window.addEventListener('officers_updated', handleOfficersUpdated);
+    window.addEventListener('roster_updated', handleRosterUpdated);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('officers_updated', handleOfficersUpdated);
+      window.removeEventListener('roster_updated', handleRosterUpdated);
+    };
   }, []);
 
   async function initializeData() {
     setLoading(true);
     
-    if (!supabase) {
-      // Supabase not configured, use local defaults
-      setOfficers(DEFAULT_OFFICERS);
-      const map: Record<string, Officer> = {};
-      DEFAULT_OFFICERS.forEach(o => map[o.squad] = o);
-      setOfficersMap(map);
-      setRoster(NOVEMBER_2026_ROSTER);
-      setLoading(false);
-      return;
-    }
+    // Fetch and sync officers from persistent storage & Supabase
+    const officersList = await fetchAndSyncOfficers();
+    setOfficers(officersList);
+    const map: Record<string, Officer> = {};
+    officersList.forEach(o => {
+      if (o.squad) map[o.squad] = o;
+      if (o.name) map[o.name] = o;
+      if (o.id) map[o.id] = o;
+    });
+    setOfficersMap(map);
 
-    // Fetch Officers from Supabase
-    const { data: officersData } = await supabase.from(TABLES.OFFICERS).select('*');
-    if (officersData && officersData.length > 0) {
-      setOfficers(officersData);
-      const map: Record<string, Officer> = {};
-      officersData.forEach(o => {
-        if (o.squad) map[o.squad] = o;
-        if (o.name) map[o.name] = o;
-        if (o.id) map[o.id] = o;
-      });
-      setOfficersMap(map);
-    } else {
-      // Seed default if empty
-      setOfficers(DEFAULT_OFFICERS);
-      const map: Record<string, Officer> = {};
-      DEFAULT_OFFICERS.forEach(o => {
-        if (o.squad) map[o.squad] = o;
-        if (o.name) map[o.name] = o;
-        if (o.id) map[o.id] = o;
-      });
-      setOfficersMap(map);
-    }
-
-    // Fetch Roster from Supabase
-    const { data: rosterData } = await supabase.from(TABLES.ROSTER).select('*').order('created_at', { ascending: true });
-    if (rosterData && rosterData.length > 0) {
-      const normalizedRoster: DutyRow[] = rosterData.map((r: any) => ({
-        date: r.date,
-        dayName: r.day_name || r.dayName || '',
-        dayNameEn: r.day_name_en || r.dayNameEn || '',
-        communalPi: r.communal_pi || r.communalPi || '',
-        divisionPi: r.division_pi || r.divisionPi || '',
-        cmMorchoPsi: r.cm_morcho_psi || r.cmMorchoPsi || '',
-        campusPsi: r.campus_psi || r.campusPsi || '',
-        vvipPsi: r.vvip_psi || r.vvipPsi || '',
-      }));
-      setRoster(normalizedRoster);
-    } else {
-      setRoster(NOVEMBER_2026_ROSTER);
-    }
+    // Fetch and sync roster
+    const rosterList = await fetchAndSyncRoster();
+    setRoster(rosterList);
 
     setLoading(false);
   }
@@ -275,6 +284,7 @@ export default function App() {
     if (newRows.length > 0) {
       const finalRoster = mode === 'replace' ? newRows : [...roster, ...newRows];
       setRoster(finalRoster);
+      saveRosterToLocal(finalRoster);
       
       if (supabase) {
         try {
@@ -305,7 +315,7 @@ export default function App() {
           alert(`Server Error: ${err.message || 'Verification Failed'}\n\nCheck if your Supabase table "NightRoster" exists and RLS policies are active.`);
         }
       } else {
-        showToast(`Imported ${newRows.length} rows (${mode} mode - local only)`);
+        showToast(`Imported ${newRows.length} rows (${mode} mode - permanently saved)`);
       }
     }
   };
@@ -313,6 +323,7 @@ export default function App() {
   const handleApplySwap = async (date: string, dutyColumnId: string, newSquad: string) => {
     const updatedRoster = roster.map(row => row.date === date ? { ...row, [dutyColumnId]: newSquad } : row);
     setRoster(updatedRoster);
+    saveRosterToLocal(updatedRoster);
 
     // Save to Supabase using explicit snake_case column names
     const targetRow = updatedRoster.find(r => r.date === date);
