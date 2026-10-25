@@ -38,7 +38,8 @@ import { alertSound, showBrowserNotification } from './utils/audioAlert';
 import { 
   createIndividualDutyMessage, 
   createPiBroadcastMessage, 
-  createPsiBroadcastMessage 
+  createPsiBroadcastMessage,
+  formatSquadText 
 } from './utils/whatsapp';
 import { supabase, TABLES } from './utils/supabaseClient';
 import { 
@@ -77,8 +78,8 @@ function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean
                 <Shield className="text-white" size={28} />
               </div>
               <div>
-                <h1 className="text-white font-bold text-lg leading-tight">Gujarat Police</h1>
-                <p className="text-slate-500 text-[11px] uppercase tracking-widest font-extrabold">Night Duty</p>
+                <h1 className="text-white font-bold text-lg leading-tight">ક્રાઇમ બ્રાન્ચ</h1>
+                <p className="text-slate-500 text-[11px] uppercase tracking-widest font-extrabold">Crime Branch Night Duty</p>
               </div>
             </div>
             <button onClick={onClose} className="lg:hidden p-2 text-slate-400 hover:text-white">
@@ -129,15 +130,29 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [roster, setRoster] = useState<DutyRow[]>(() => loadRosterFromLocal() || NOVEMBER_2026_ROSTER);
   const [officers, setOfficers] = useState<Officer[]>(() => loadOfficersFromLocal() || DEFAULT_OFFICERS);
-  const [officersMap, setOfficersMap] = useState<Record<string, Officer>>(() => {
-    const initialOfficers = loadOfficersFromLocal() || DEFAULT_OFFICERS;
+  const buildOfficersMap = (list: Officer[]): Record<string, Officer> => {
     const map: Record<string, Officer> = {};
-    initialOfficers.forEach(o => {
-      if (o.squad) map[o.squad] = o;
+    list.forEach(o => {
+      if (o.squad) {
+        map[o.squad] = o;
+        const fmt = formatSquadText(o.squad);
+        if (fmt) map[fmt] = o;
+      }
       if (o.name) map[o.name] = o;
       if (o.id) map[o.id] = o;
+      if (o.phone) map[o.phone] = o;
+      if (o.branch) {
+        map[o.branch] = o;
+        const fmtBranch = formatSquadText(o.branch);
+        if (fmtBranch) map[fmtBranch] = o;
+      }
     });
     return map;
+  };
+
+  const [officersMap, setOfficersMap] = useState<Record<string, Officer>>(() => {
+    const initialOfficers = loadOfficersFromLocal() || DEFAULT_OFFICERS;
+    return buildOfficersMap(initialOfficers);
   });
   const [loading, setLoading] = useState(false);
 
@@ -169,13 +184,7 @@ export default function App() {
     const handleOfficersUpdated = (e: any) => {
       if (e.detail && Array.isArray(e.detail)) {
         setOfficers(e.detail);
-        const map: Record<string, Officer> = {};
-        e.detail.forEach((o: Officer) => {
-          if (o.squad) map[o.squad] = o;
-          if (o.name) map[o.name] = o;
-          if (o.id) map[o.id] = o;
-        });
-        setOfficersMap(map);
+        setOfficersMap(buildOfficersMap(e.detail));
       }
     };
 
@@ -201,13 +210,7 @@ export default function App() {
     // Fetch and sync officers from persistent storage & Supabase
     const officersList = await fetchAndSyncOfficers();
     setOfficers(officersList);
-    const map: Record<string, Officer> = {};
-    officersList.forEach(o => {
-      if (o.squad) map[o.squad] = o;
-      if (o.name) map[o.name] = o;
-      if (o.id) map[o.id] = o;
-    });
-    setOfficersMap(map);
+    setOfficersMap(buildOfficersMap(officersList));
 
     // Fetch and sync roster
     const rosterList = await fetchAndSyncRoster();
@@ -233,21 +236,35 @@ export default function App() {
   const handleOpenIndividualWhatsApp = (squad: string, dutyTypeKey: string, dutyTitleGu: string, dateParam?: string, dayParam?: string) => {
     const date = dateParam || selectedDutyRow.date;
     const day = dayParam || selectedDutyRow.dayName;
-    const officer = officersMap[squad] || null;
+    const officer = officersMap[squad] || officers.find(o => o.name === squad || o.squad === squad || o.id === squad) || null;
 
-    const message = createIndividualDutyMessage({ officer, squadText: squad, dutyTitleGu, date, dayName: day });
-    setWhatsAppModal({ isOpen: true, title: `${dutyTitleGu} - WhatsApp`, recipientName: officer ? `${officer.name} (${squad})` : squad, recipientPhone: officer ? officer.phone : '', message });
+    const message = createIndividualDutyMessage({ 
+      officer, 
+      squadText: squad, 
+      dutyTitleGu, 
+      date, 
+      dayName: day,
+      officersMap,
+      officersList: officers 
+    });
+    setWhatsAppModal({ 
+      isOpen: true, 
+      title: `${dutyTitleGu} - WhatsApp`, 
+      recipientName: officer ? `${officer.name} (${formatSquadText(officer.squad) || officer.squad})` : squad, 
+      recipientPhone: officer ? officer.phone : '', 
+      message 
+    });
   };
 
   const handleOpenPiBroadcast = (row: DutyRow) => {
-    const message = createPiBroadcastMessage({ row, officersMap });
-    setWhatsAppModal({ isOpen: true, title: `PI નાઈટ ડ્યુટી પત્રક`, recipientName: 'PI ગ્રૂપ', recipientPhone: '', message });
+    const message = createPiBroadcastMessage({ row, officersMap, officersList: officers });
+    setWhatsAppModal({ isOpen: true, title: `PI નાઈટ ડ્યુટી પત્રક (ક્રાઇમ બ્રાન્ચ)`, recipientName: 'PI ગ્રૂપ', recipientPhone: '', message });
   };
 
   const handleOpenPsiBroadcast = (row: DutyRow, rowIndex: number) => {
     const nextRow = roster[rowIndex + 1];
-    const message = createPsiBroadcastMessage({ row, nextRow, officersMap });
-    setWhatsAppModal({ isOpen: true, title: `PSI નાઈટ ડ્યુટી પત્રક`, recipientName: 'PSI ગ્રૂપ', recipientPhone: '', message });
+    const message = createPsiBroadcastMessage({ row, nextRow, officersMap, officersList: officers });
+    setWhatsAppModal({ isOpen: true, title: `PSI નાઈટ ડ્યુટી પત્રક (ક્રાઇમ બ્રાન્ચ)`, recipientName: 'PSI ગ્રૂપ', recipientPhone: '', message });
   };
 
   const handleImportPaste = async (text: string, mode: 'append' | 'replace') => {
@@ -354,23 +371,75 @@ export default function App() {
   };
 
   const handleExportCSV = () => {
-    const headers = ['તારીખ', 'વાર', 'કોમ્યુનલ નાઈટ (PI)', 'ડીવીઝન નાઈટ (PI)', 'CM મોરચો (PSI)', 'કેમ્પસ નાઈટ (PSI)', 'VVIP બંદોબસ્ત (PSI)'];
-    const rows = roster.map(r => [`"${r.date}"`, `"${r.dayName}"`, `"${r.communalPi}"`, `"${r.divisionPi}"`, `"${r.cmMorchoPsi}"`, `"${r.campusPsi}"`, `"${r.vvipPsi}"`]);
+    const headers = [
+      'તારીખ',
+      'વાર',
+      'કોમ્યુનલ નાઈટ (PI)',
+      'ડીવીઝન નાઈટ (PI)',
+      'CM મોરચો (PSI)',
+      'કેમ્પસ નાઈટ (PSI)',
+      'VVIP બંદોબસ્ત (PSI)'
+    ];
+    const rows = roster.map(r => [
+      `"${r.date}"`,
+      `"${r.dayName}"`,
+      `"${r.communalPi}"`,
+      `"${r.divisionPi}"`,
+      `"${r.cmMorchoPsi}"`,
+      `"${r.campusPsi}"`,
+      `"${r.vvipPsi}"`
+    ]);
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Night_Roster.csv`;
+    link.download = `Crime_Branch_1_to_30_Night_Duty_Roster.csv`;
     link.click();
-    showToast('CSV ફાઇલ ડાઉનલોડ થઈ ગઈ!');
+    showToast('૧ થી ૩૦ ડ્યુટી પત્રક (Excel/CSV) ડાઉનલોડ થઈ ગયું!');
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'તારીખ',
+      'વાર',
+      'કોમ્યુનલ નાઈટ (PI)',
+      'ડીવીઝન નાઈટ (PI)',
+      'CM મોરચો (PSI)',
+      'કેમ્પસ નાઈટ (PSI)',
+      'VVIP બંદોબસ્ત (PSI)'
+    ];
+    const dayNamesGu = ['રવિવાર', 'સોમવાર', 'મંગળવાર', 'બુધવાર', 'ગુરુવાર', 'શુક્રવાર', 'શનિવાર'];
+    const templateRows = Array.from({ length: 30 }, (_, i) => {
+      const d = i + 1;
+      const dateStr = `${d}/11/2026`;
+      const dateObj = new Date(2026, 10, d);
+      const dayName = dayNamesGu[dateObj.getDay()];
+      return [
+        `"${dateStr}"`,
+        `"${dayName}"`,
+        `"સ્કોડ - ${(d % 15 + 1).toString().padStart(2, '0')}"`,
+        `"સ્કોડ - ${((d + 5) % 15 + 1).toString().padStart(2, '0')}"`,
+        `"સ્કોડ - ${(d % 20 + 1).toString().padStart(2, '0')}"`,
+        `"સ્કોડ - ${((d + 3) % 20 + 1).toString().padStart(2, '0')}"`,
+        `"સ્કોડ - ${((d + 7) % 20 + 1).toString().padStart(2, '0')}"`
+      ];
+    });
+    const csvContent = '\uFEFF' + [headers.join(','), ...templateRows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Crime_Branch_1_to_30_Duty_Template.csv`;
+    link.click();
+    showToast('૧ થી ૩૦ સેમ્પલ ટેમ્પલેટ (CSV) ડાઉનલોડ થઈ ગયું!');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-400 font-bold tracking-widest animate-pulse">GUJARAT POLICE SYSTEM LOADING...</p>
+        <p className="text-slate-400 font-bold tracking-widest animate-pulse">CRIME BRANCH SYSTEM LOADING...</p>
       </div>
     );
   }
@@ -541,6 +610,8 @@ export default function App() {
                     setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: row ? (row as any)[id] : '' });
                   }}
                   onImportPaste={handleImportPaste}
+                  onExportRoster={handleExportCSV}
+                  onDownloadTemplate={handleDownloadTemplate}
                   lang={lang}
                 />
               } />
@@ -560,7 +631,7 @@ export default function App() {
           </main>
 
           <footer className="mt-auto border-t border-slate-900 bg-slate-950 px-8 py-4 text-xs text-slate-500 flex items-center justify-between no-print">
-            <p>© 2026 Gujarat Police - Night Duty Monitoring</p>
+            <p>© 2026 ક્રાઇમ બ્રાન્ચ - Night Duty Monitoring</p>
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> System Live</span>
               <button onClick={() => setLang(l => l === 'gu' ? 'en' : 'gu')} className="hover:text-blue-500 transition-colors uppercase font-bold tracking-widest">{lang === 'gu' ? 'English' : 'ગુજરાતી'}</button>

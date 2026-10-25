@@ -49,7 +49,7 @@ export const AlertSettingsModal: React.FC<AlertSettingsModalProps> = ({
     setForm({ ...form, browserNotificationsEnabled: granted });
     if (granted) {
       showBrowserNotification(
-        'ગુજરાત પોલીસ નાઈટ એલર્ટ',
+        'ક્રાઇમ બ્રાન્ચ નાઈટ એલર્ટ',
         'નાઈટ ડ્યુટી એલર્ટ સિસ્ટમ સફળતાપૂર્વક સક્રિય થઈ ગઈ છે.'
       );
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Search, 
   ArrowRightLeft, 
@@ -9,10 +9,16 @@ import {
   Shield,
   Download,
   ClipboardPaste,
+  Upload,
+  FileSpreadsheet,
+  Printer,
+  FileDown,
+  CheckCircle2,
   X,
   Check
 } from 'lucide-react';
 import { DutyRow, Officer } from '../types/roster';
+import { formatSquadText } from '../utils/whatsapp';
 
 interface RosterTableProps {
   roster: DutyRow[];
@@ -24,6 +30,8 @@ interface RosterTableProps {
   onPsiBroadcast: (row: DutyRow, index: number) => void;
   onSwapDuty: (date: string, dutyColumnId: string) => void;
   onImportPaste: (pastedText: string, mode: 'append' | 'replace') => void;
+  onExportRoster?: () => void;
+  onDownloadTemplate?: () => void;
   lang: 'gu' | 'en';
 }
 
@@ -37,11 +45,15 @@ export const RosterTable: React.FC<RosterTableProps> = ({
   onPsiBroadcast,
   onSwapDuty,
   onImportPaste,
+  onExportRoster,
+  onDownloadTemplate,
   lang,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [pastedData, setPastedData] = useState('');
+  const [importFileName, setImportFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'pi' | 'psi'>('all');
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | '1-10' | '11-20' | '21-30'>('all');
 
@@ -85,18 +97,59 @@ export const RosterTable: React.FC<RosterTableProps> = ({
     return true;
   });
 
+  // Calculate detected rows count and preview info from pasted/uploaded content
+  const detectedInfo = useMemo(() => {
+    if (!pastedData.trim()) return { count: 0, firstDate: '', lastDate: '' };
+    const lines = pastedData.trim().split(/\r?\n/);
+    const headerKeywords = ['date', 'day', 'communal', 'division', 'તારીખ', 'વાર', 'કોમ્યુનલ', 'ડીવીઝન', 'morcho', 'મોરચો'];
+    const validDates: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = (line.includes('\t') ? line.split('\t') : line.split(/[,;]/))
+        .map(c => c.trim().replace(/^"|"$/g, ''));
+      if (i === 0 && cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)))) {
+        continue;
+      }
+      if (cols.length >= 6) {
+        validDates.push(cols[0]);
+      }
+    }
+    return {
+      count: validDates.length,
+      firstDate: validDates[0] || '',
+      lastDate: validDates[validDates.length - 1] || ''
+    };
+  }, [pastedData]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setPastedData(content);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleProcessImport = (mode: 'append' | 'replace') => {
     if (!pastedData.trim()) return;
     onImportPaste(pastedData, mode);
     setPastedData('');
+    setImportFileName('');
     setIsImportModalOpen(false);
   };
 
   const renderCell = (squadOrName: string, dutyKey: string, dutyTitle: string, row: DutyRow) => {
     // Find officer by map (indexed by squad & name) or search in officers array
-    const officer = officersMap[squadOrName] || officers.find(o => o.name === squadOrName || o.squad === squadOrName);
+    const officer = officersMap[squadOrName] || officers.find(o => o.name === squadOrName || o.squad === squadOrName || o.id === squadOrName);
     const displayName = officer ? officer.name : squadOrName;
-    const squadBadge = officer ? officer.squad : squadOrName;
+    const squadBadge = formatSquadText(officer?.squad || squadOrName) || officer?.squad || squadOrName;
 
     return (
       <div 
@@ -209,13 +262,36 @@ export const RosterTable: React.FC<RosterTableProps> = ({
             </div>
           </div>
 
-          <button 
-            onClick={() => setIsImportModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-lg shadow-emerald-900/20 cursor-pointer active:scale-95 shrink-0"
-          >
-            <ClipboardPaste size={20} />
-            {lang === 'gu' ? 'Excel માંથી ઇમ્પોર્ટ' : 'IMPORT SPREADSHEET'}
-          </button>
+          {/* Action Buttons: 1 to 30 Download, Import, and Print */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {onExportRoster && (
+              <button 
+                onClick={onExportRoster}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-blue-900/30 cursor-pointer active:scale-95"
+                title={lang === 'gu' ? '૧ થી ૩૦ ડ્યુટી પત્રક ડાઉનલોડ કરો (Excel / CSV)' : 'Download 1 to 30 Duty Roster (Excel / CSV)'}
+              >
+                <Download size={20} />
+                <span>{lang === 'gu' ? '૧ થી ૩૦ પત્રક ડાઉનલોડ' : 'DOWNLOAD 1-30 ROSTER'}</span>
+              </button>
+            )}
+
+            <button 
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-emerald-900/30 cursor-pointer active:scale-95 shrink-0"
+              title={lang === 'gu' ? 'ડ્યુટી પત્રક ઇમ્પોર્ટ કરો (Excel / CSV / Paste)' : 'Import Duty Roster (Excel / CSV / Paste)'}
+            >
+              <ClipboardPaste size={20} />
+              <span>{lang === 'gu' ? 'ઇમ્પોર્ટ પત્રક (Import)' : 'IMPORT ROSTER'}</span>
+            </button>
+
+            <button 
+              onClick={() => window.print()}
+              className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white p-3.5 rounded-2xl font-black transition-all border border-slate-800 cursor-pointer active:scale-95 hidden sm:flex items-center justify-center shadow-md"
+              title={lang === 'gu' ? 'પ્રિન્ટ પત્રક' : 'Print Roster'}
+            >
+              <Printer size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Quick Helper Banner */}
@@ -298,52 +374,167 @@ export const RosterTable: React.FC<RosterTableProps> = ({
         </div>
       </div>
 
-      {/* Spreadsheet Paste Modal */}
+      {/* Spreadsheet / File Import Modal with 1 to 30 Download Option */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-[3rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-            <div className="px-10 py-8 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
-              <div>
-                <h3 className="text-3xl font-black text-white tracking-tight">Import from Spreadsheet</h3>
-                <p className="text-slate-500 text-base font-bold mt-1 uppercase tracking-widest">Excel / Google Sheets Copy-Paste</p>
-              </div>
-              <button onClick={() => setIsImportModalOpen(false)} className="p-3 text-slate-400 hover:text-white transition-colors cursor-pointer bg-slate-800 rounded-2xl">
-                <X size={28} />
-              </button>
-            </div>
-            <div className="p-10 space-y-8">
-              <div className="bg-blue-900/20 border border-blue-800/50 p-6 rounded-2xl text-blue-300 text-sm font-bold leading-relaxed">
-                ℹ️ Copy data from Excel (7 columns) and paste it below. You can choose to add to existing data or replace everything.
-              </div>
-              <textarea
-                className="w-full h-80 bg-slate-950 border-2 border-slate-800 rounded-[2rem] p-8 text-white focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono text-base leading-relaxed"
-                placeholder="Paste rows here..."
-                value={pastedData}
-                onChange={(e) => setPastedData(e.target.value)}
-              />
-              <div className="flex flex-col sm:flex-row justify-end gap-4">
-                <button
-                  onClick={() => setIsImportModalOpen(false)}
-                  className="px-8 py-4 rounded-2xl text-slate-400 hover:text-white font-black uppercase tracking-widest transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleProcessImport('append')}
-                    className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition-all border border-slate-700 cursor-pointer shadow-xl active:scale-95"
-                  >
-                    APPEND DATA
-                  </button>
-                  <button
-                    onClick={() => handleProcessImport('replace')}
-                    className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-900/30 cursor-pointer active:scale-95"
-                  >
-                    <Check size={24} />
-                    REPLACE ALL
-                  </button>
+          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-300 max-h-[92vh] flex flex-col">
+            <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl">
+                  <FileSpreadsheet size={26} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">
+                    {lang === 'gu' ? 'ડ્યુટી પત્રક ઇમ્પોર્ટ (૧ થી ૩૦ પત્રક)' : 'Import Duty Roster (1 to 30)'}
+                  </h3>
+                  <p className="text-slate-400 text-xs font-bold mt-0.5">
+                    {lang === 'gu' ? 'Excel / CSV ફાઇલ અપલોડ કરો અથવા ડેટા પેસ્ટ કરો' : 'Upload Excel / CSV file or paste spreadsheet data'}
+                  </p>
                 </div>
               </div>
+              <button 
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setPastedData('');
+                  setImportFileName('');
+                }} 
+                className="p-2.5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-slate-800 hover:bg-slate-700 rounded-xl"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 md:p-8 space-y-5 overflow-y-auto flex-1">
+              {/* Quick Template Download Card - Directly fulfills user request */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-white flex items-center gap-2">
+                    <Download size={16} className="text-blue-400" />
+                    {lang === 'gu' ? '૧ થી ૩૦ પત્રક ડાઉનલોડ કરો:' : 'Download 1 to 30 Roster:'}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'gu' ? 'Excel માં ફેરફાર કરવા માટે હાલનો પત્રક અથવા ખાલી ટેમ્પલેટ ડાઉનલોડ કરો' : 'Download existing 1-30 roster or blank template for editing in Excel'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {onExportRoster && (
+                    <button
+                      type="button"
+                      onClick={onExportRoster}
+                      className="px-3.5 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs font-bold rounded-xl border border-blue-500/30 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    >
+                      <Download size={14} />
+                      {lang === 'gu' ? '૧ થી ૩૦ પત્રક (CSV)' : 'Current 1-30 CSV'}
+                    </button>
+                  )}
+                  {onDownloadTemplate && (
+                    <button
+                      type="button"
+                      onClick={onDownloadTemplate}
+                      className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    >
+                      <FileDown size={14} />
+                      {lang === 'gu' ? 'બ્લેન્ક ટેમ્પલેટ' : 'Blank Template'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload File Box */}
+              <div className="grid grid-cols-1 gap-4">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept=".csv,.tsv,.txt" 
+                  className="hidden" 
+                  onChange={handleFileUpload} 
+                />
+                
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-700 hover:border-emerald-500/70 bg-slate-950/60 hover:bg-emerald-950/10 p-5 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group"
+                >
+                  <div className="p-3 bg-slate-900 group-hover:bg-emerald-500/20 rounded-xl text-slate-400 group-hover:text-emerald-400 transition-colors">
+                    <Upload size={22} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
+                      {importFileName ? `પસંદ કરેલ ફાઇલ: ${importFileName}` : (lang === 'gu' ? 'કમ્પ્યુટરમાંથી CSV / Excel ફાઇલ પસંદ કરો' : 'Click to select CSV / Excel file')}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {importFileName ? (lang === 'gu' ? 'બીજી ફાઇલ પસંદ કરવા અહીં ક્લિક કરો' : 'Click to change file') : '.csv, .tsv, અથવા .txt ફાઇલ સપોર્ટ કરે છે'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Textarea for Paste */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-300">
+                    {lang === 'gu' ? 'અથવા Excel માંથી ડેટા કોપી કરી અહીં પેસ્ટ કરો:' : 'Or paste rows directly from Excel / Google Sheets:'}
+                  </span>
+                  {detectedInfo.count > 0 && (
+                    <span className="text-emerald-400 bg-emerald-950/70 border border-emerald-800/50 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-mono">
+                      <CheckCircle2 size={12} />
+                      {detectedInfo.count} {lang === 'gu' ? 'દિવસો ડિટેક્ટ થયા' : 'days detected'}
+                      {detectedInfo.firstDate && ` (${detectedInfo.firstDate} થી ${detectedInfo.lastDate})`}
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  className="w-full h-44 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all font-mono text-xs leading-relaxed"
+                  placeholder="તારીખ, વાર, કોમ્યુનલ (PI), ડીવીઝન (PI), CM મોરચો (PSI), કેમ્પસ (PSI), VVIP (PSI)&#10;1/11/2026	રવિવાર	સ્કોડ - ૦૪	સ્કોડ - ૦૫	સ્કોડ - ૦૯	સ્કોડ - ૦૧	સ્કોડ - ૦૬"
+                  value={pastedData}
+                  onChange={(e) => setPastedData(e.target.value)}
+                />
+              </div>
+
+              {/* Instructions format note */}
+              <div className="text-[11px] text-slate-400 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
+                <span className="font-bold text-amber-400">💡 કોલમ ફોર્મેટ:</span> તારીખ | વાર | કોમ્યુનલ નાઈટ PI | ડીવીઝન નાઈટ PI | CM મોરચો PSI | કેમ્પસ નાઈટ PSI | VVIP બંદોબસ્ત PSI.
+              </div>
+            </div>
+
+            <div className="px-8 py-5 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setPastedData('');
+                  setImportFileName('');
+                }}
+                className="px-6 py-3 rounded-xl text-slate-400 hover:text-white font-bold text-sm transition-all cursor-pointer"
+              >
+                {lang === 'gu' ? 'રદ કરો' : 'Cancel'}
+              </button>
+              
+              <button
+                type="button"
+                disabled={!pastedData.trim()}
+                onClick={() => handleProcessImport('append')}
+                className={`px-5 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all border cursor-pointer active:scale-95 ${
+                  pastedData.trim()
+                    ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700'
+                    : 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
+                }`}
+              >
+                {lang === 'gu' ? 'ડેટા ઉમેરો (Append)' : 'APPEND DATA'}
+              </button>
+
+              <button
+                type="button"
+                disabled={!pastedData.trim()}
+                onClick={() => handleProcessImport('replace')}
+                className={`px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xl cursor-pointer active:scale-95 ${
+                  pastedData.trim()
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30'
+                    : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                }`}
+              >
+                <Check size={18} />
+                <span>{lang === 'gu' ? '૧ થી ૩૦ પત્રક રિપ્લેસ કરો (Replace All)' : 'REPLACE ALL 1-30'}</span>
+              </button>
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { DutyRow, Officer } from '../types/roster';
+import { formatSquadText } from '../utils/whatsapp';
 
 interface TodayDutyCardProps {
   dutyRow: DutyRow;
@@ -106,7 +107,8 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         {dutyItems.map((item) => {
-          const officer = officersMap[item.squad] || officers.find(o => o.name === item.squad || o.squad === item.squad);
+          const officer = officersMap[item.squad] || officers.find(o => o.name === item.squad || o.squad === item.squad || o.id === item.squad);
+          const formattedSquad = formatSquadText(officer?.squad || item.squad) || officer?.squad || item.squad;
           
           return (
             <div
@@ -133,7 +135,7 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
                 <div className="space-y-1.5 mb-6">
                   <p className="text-xs text-amber-300 font-mono font-bold flex items-center gap-1.5">
                     <span className="bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/30">
-                      {officer?.squad || item.squad}
+                      {formattedSquad}
                     </span>
                     {officer?.rank && (
                       <span className="text-slate-400 text-[11px] font-bold">

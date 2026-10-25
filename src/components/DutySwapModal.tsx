@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, ArrowRightLeft, Shield, Search, User, Check, Phone, Plus, Sparkles } from 'lucide-react';
 import { Officer } from '../types/roster';
+import { formatSquadText } from '../utils/whatsapp';
 
 interface DutySwapModalProps {
   isOpen: boolean;
@@ -85,7 +86,7 @@ export const DutySwapModal: React.FC<DutySwapModalProps> = ({
 
   // Find current officer details if matched
   const currentOfficer = officers.find(
-    (o) => o.name === currentSquad || o.squad === currentSquad || o.id === currentSquad
+    (o) => o.name === currentSquad || o.squad === currentSquad || o.id === currentSquad || formatSquadText(o.squad) === formatSquadText(currentSquad)
   );
 
   return (
@@ -126,7 +127,7 @@ export const DutySwapModal: React.FC<DutySwapModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-slate-400 font-medium">હાલમાં ફાળવેલ:</span>
             <span className="font-bold text-white bg-slate-800 px-3 py-1 rounded-lg border border-slate-700 font-mono">
-              {currentOfficer ? `${currentOfficer.name} (${currentOfficer.squad})` : (currentSquad || 'કોઈ નહીં')}
+              {currentOfficer ? `${currentOfficer.name} (${formatSquadText(currentOfficer.squad) || currentOfficer.squad})` : (formatSquadText(currentSquad) || currentSquad || 'કોઈ નહીં')}
             </span>
           </div>
           <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
@@ -240,7 +241,7 @@ export const DutySwapModal: React.FC<DutySwapModalProps> = ({
                           {off.category}
                         </span>
                         <span className="text-xs sm:text-sm font-mono font-bold text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/30">
-                          {off.squad}
+                          {formatSquadText(off.squad) || off.squad}
                         </span>
                         {off.rank && (
                           <span className="text-[11px] text-slate-400 hidden sm:inline">

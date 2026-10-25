@@ -17,10 +17,10 @@ export const PrintRosterView: React.FC<PrintRosterViewProps> = ({
       {/* Official Police Order Header */}
       <div className="text-center border-b-2 border-black pb-3 mb-4">
         <div className="font-bold text-sm tracking-wider uppercase">
-          ગુજરાત રાજ્ય પોલીસ વિભાગ
+          ક્રાઇમ બ્રાન્ચ - અમદાવાદ શહેર
         </div>
         <div className="font-bold text-base mt-0.5">
-          નાઈટ પેટ્રોલીંગ અને બંદોબસ્ત ફરજ રોસ્ટર
+          નાઈટ પેટ્રોલીંગ અને બંદોબસ્ત ફરજ પત્રક (૧ થી ૩૦)
         </div>
         <div className="text-xs font-semibold mt-1">
           માહે: {monthNameGu} - {year} (સમય: રાત્રે ૨૦:૦૦ થી સવારે ૦૮:૦૦ કલાક)

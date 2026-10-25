@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Officer } from '../types/roster';
 import { DEFAULT_OFFICERS } from '../data/rosterData';
+import { formatSquadText } from '../utils/whatsapp';
 import { supabase, TABLES } from '../utils/supabaseClient';
 import { 
   fetchAndSyncOfficers, 
@@ -104,7 +105,7 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
     link.href = url;
     const now = new Date();
     const dateStr = `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}`;
-    link.download = `Gujarat_Police_Adhikari_Yadi_${dateStr}.csv`;
+    link.download = `Crime_Branch_Adhikari_Yadi_${dateStr}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -455,7 +456,7 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
                       }`}>
                         {o.category}
                       </span>
-                      <span className="text-xs font-mono font-black text-slate-500 uppercase tracking-widest">{o.squad}</span>
+                      <span className="text-xs font-mono font-black text-slate-500 uppercase tracking-widest">{formatSquadText(o.squad) || o.squad}</span>
                     </div>
                     <h4 className={`${viewMode === 'grid' ? 'text-3xl' : 'text-xl'} font-black text-white group-hover:text-blue-400 transition-colors leading-tight tracking-tight`}>
                       {o.name}

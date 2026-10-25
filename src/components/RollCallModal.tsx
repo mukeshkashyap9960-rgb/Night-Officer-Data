@@ -75,7 +75,7 @@ export const RollCallModal: React.FC<RollCallModalProps> = ({
 
   const generateRollCallReport = () => {
     const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    let text = `🚨 *ગુજરાત પોલીસ - નાઈટ ડ્યુટી રોલ-કોલ રીપોર્ટ* 🚨\n`;
+    let text = `🚨 *ક્રાઇમ બ્રાન્ચ - નાઈટ ડ્યુટી રોલ-કોલ રીપોર્ટ* 🚨\n`;
     text += `📅 *તારીખ:* ${dutyRow.date} (${dutyRow.dayName})\n`;
     text += `⏰ *રોલ-કોલ સમય:* ${time} કલાકે\n`;
     text += `━━━━━━━━━━━━━━━━━━━━\n`;
