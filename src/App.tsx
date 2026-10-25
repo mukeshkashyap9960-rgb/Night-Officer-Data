@@ -505,8 +505,8 @@ export default function App() {
                   {/* Quick 1 to 30 Date Selector for Rapid Swapping & Viewing */}
                   <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
                     <div className="flex items-center justify-between text-xs font-bold px-1">
-                      <span className="text-slate-400">
-                        {lang === 'gu' ? '૧ થી ૩૦ તારીખ પસંદ કરો (ફટાફટ સ્વેપ અને વિગત માટે):' : 'Select Date (1 to 30 November):'}
+                      <span className="text-slate-300 font-bold text-sm">
+                        {lang === 'gu' ? 'તારીખ પસંદ કરો' : 'Select Date'}
                       </span>
                       <span className="text-amber-400 font-mono bg-amber-950/60 px-2.5 py-0.5 rounded border border-amber-800/40">
                         {lang === 'gu' ? 'પસંદ કરેલ તારીખ' : 'Active Date'}: {selectedDate}
