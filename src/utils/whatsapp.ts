@@ -70,7 +70,7 @@ export function createPiBroadcastMessage(params: {
     return `• ${dutyType}\n  નામ: ${name}\n  સ્કોડ : ${squadFormatted}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
   };
 
-  return `⭐ *ગુજરાત પોલીસ - PI શ્રી નાઈટ* ⭐
+  return `⭐ ગુજરાત પોલીસ - PI શ્રી નાઈટ ⭐
 📅 તારીખ: ${row.date} (${row.dayName})
 ━━━━━━━━━━━━━━━━━━━━
 ${getOffDetails(row.communalPi, 'કોમ્યુનલ નાઈટ PI શ્રી')}
@@ -106,7 +106,7 @@ export function createPsiBroadcastMessage(params: {
     ? getOffDetails(nextRow.cmMorchoPsi, `CM મોરચો (આગામી તારીખ: ${nextRow.date})`)
     : '';
 
-  return `⭐ *ગુજરાત પોલીસ - PSI શ્રી નાઈટ* ⭐
+  return `⭐ ગુજરાત પોલીસ - PSI શ્રી નાઈટ ⭐
 📅 તારીખ: ${row.date} (${row.dayName})
 ━━━━━━━━━━━━━━━━━━━━
 ${getOffDetails(row.cmMorchoPsi, 'CM મોરચો PSI શ્રી')}

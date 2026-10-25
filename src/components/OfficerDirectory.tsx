@@ -128,7 +128,7 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
 
     const lines = pastedData.trim().split('\n');
     const newOfficers: Partial<Officer>[] = [];
-    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'rank', 'squad', 'place', 'ફરજની', 'designation'];
+    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'rank', 'squad', 'place', 'ફરજની', 'designation', 'બ.નં.'];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -141,6 +141,7 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
       
       cols = cols.map(c => c.trim().replace(/^"|"$/g, ''));
 
+      // Skip header if it looks like one
       if (i === 0) {
         const isHeader = cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)));
         if (isHeader) continue;
@@ -154,42 +155,65 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
         let category: 'PI' | 'PSI' = 'PSI';
 
         // 1. Identify Rank & Category
-        const rankIdx = cols.findIndex(c => /PI|PSI|WPI|WPSI/i.test(c));
+        // Priority to exact matches or common abbreviations
+        const rankIdx = cols.findIndex(c => /^(PI|PSI|WPI|WPSI)$/i.test(c) || /(પોલીસ ઇન્સ્પેક્ટર|પોલીસ સબ ઇન્સ્પેક્ટર)/.test(c));
         if (rankIdx !== -1) {
           rankStr = cols[rankIdx];
           const upper = rankStr.toUpperCase();
           category = (upper.includes('PI') && !upper.includes('PSI')) ? 'PI' : 'PSI';
-        }
-
-        // 2. Identify Phone
-        const phoneIdx = cols.findIndex(c => /[\d\s-]{7,}/.test(c) && !c.includes('સ્કોડ'));
-        if (phoneIdx !== -1) {
-          phoneStr = cols[phoneIdx].replace(/\s/g, '');
-        }
-
-        // 3. Identify Name
-        const nameIdx = cols.findIndex(c => c.includes('શ્રી'));
-        if (nameIdx !== -1) {
-          nameStr = cols[nameIdx];
         } else {
-          // Longest remaining string might be the name
-          const candidates = cols.filter((c, idx) => 
-            idx !== rankIdx && idx !== phoneIdx && idx !== 0 && c.length > 2
-          );
-          if (candidates.length > 0) {
-            nameStr = candidates.sort((a, b) => b.length - a.length)[0];
+          // Fallback search for rank anywhere
+          const fallbackRankIdx = cols.findIndex(c => /PI|PSI|WPI|WPSI/i.test(c));
+          if (fallbackRankIdx !== -1) {
+             rankStr = cols[fallbackRankIdx];
+             const upper = rankStr.toUpperCase();
+             category = (upper.includes('PI') && !upper.includes('PSI')) ? 'PI' : 'PSI';
           }
         }
 
+        // 2. Identify Phone
+        const phoneIdx = cols.findIndex(c => {
+          const digitsOnly = c.replace(/\D/g, '');
+          return digitsOnly.length >= 10 && !c.includes('સ્કોડ') && !c.includes('Squad');
+        });
+        if (phoneIdx !== -1) {
+          phoneStr = cols[phoneIdx].replace(/[^\d]/g, '');
+        }
+
+        // 3. Identify Name
+        const nameIdx = cols.findIndex(c => c.includes('શ્રી') || c.startsWith('Mr.') || c.startsWith('Ms.'));
+        if (nameIdx !== -1) {
+          nameStr = cols[nameIdx];
+        }
+
         // 4. Identify Squad
-        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('સ્કોડ'));
+        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('Squad') || c.includes('ફરજની') || c.includes('જગ્યા'));
         if (squadIdx !== -1) {
           squadStr = cols[squadIdx];
-        } else {
-          // If not found by keyword, take the last column if it's not already used
-          const lastIdx = cols.length - 1;
-          if (lastIdx !== rankIdx && lastIdx !== phoneIdx && lastIdx !== cols.indexOf(nameStr)) {
-            squadStr = cols[lastIdx];
+        }
+
+        // 5. Fallback heuristics for missing columns
+        const usedIndices = new Set([rankIdx, phoneIdx, nameIdx, squadIdx].filter(idx => idx !== -1));
+        
+        // If name still missing, look for longest unused string that isn't a number
+        if (!nameStr) {
+          const candidates = cols.map((c, idx) => ({ c, idx }))
+            .filter(({ c, idx }) => !usedIndices.has(idx) && idx !== 0 && c.length > 3 && !/^\d+$/.test(c.replace(/\D/g, '')));
+          if (candidates.length > 0) {
+            const best = candidates.sort((a, b) => b.c.length - a.c.length)[0];
+            nameStr = best.c;
+            usedIndices.add(best.idx);
+          }
+        }
+
+        // If squad still missing, look for remaining strings
+        if (!squadStr) {
+          const candidates = cols.map((c, idx) => ({ c, idx }))
+            .filter(({ c, idx }) => !usedIndices.has(idx) && idx !== 0 && c.length > 2);
+          if (candidates.length > 0) {
+            const best = candidates.sort((a, b) => b.c.length - a.c.length)[0];
+            squadStr = best.c;
+            usedIndices.add(best.idx);
           }
         }
 

@@ -145,7 +145,7 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
 
     const lines = pastedData.trim().split('\n');
     const newOfficers: Partial<Officer>[] = [];
-    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'rank', 'squad', 'place', 'ફરજની', 'designation'];
+    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'rank', 'squad', 'place', 'ફરજની', 'designation', 'બ.નં.'];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -169,37 +169,57 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
         let squadStr = '';
         let category: 'PI' | 'PSI' = 'PSI';
 
-        const rankIdx = cols.findIndex(c => /PI|PSI|WPI|WPSI/i.test(c));
+        const rankIdx = cols.findIndex(c => /^(PI|PSI|WPI|WPSI)$/i.test(c) || /(પોલીસ ઇન્સ્પેક્ટર|પોલીસ સબ ઇન્સ્પેક્ટર)/.test(c));
         if (rankIdx !== -1) {
           rankStr = cols[rankIdx];
           const upper = rankStr.toUpperCase();
           category = (upper.includes('PI') && !upper.includes('PSI')) ? 'PI' : 'PSI';
-        }
-
-        const phoneIdx = cols.findIndex(c => /[\d\s-]{7,}/.test(c) && !c.includes('સ્કોડ'));
-        if (phoneIdx !== -1) {
-          phoneStr = cols[phoneIdx].replace(/\s/g, '');
-        }
-
-        const nameIdx = cols.findIndex(c => c.includes('શ્રી'));
-        if (nameIdx !== -1) {
-          nameStr = cols[nameIdx];
         } else {
-          const candidates = cols.filter((c, idx) => 
-            idx !== rankIdx && idx !== phoneIdx && idx !== 0 && c.length > 2
-          );
-          if (candidates.length > 0) {
-            nameStr = candidates.sort((a, b) => b.length - a.length)[0];
+          const fallbackRankIdx = cols.findIndex(c => /PI|PSI|WPI|WPSI/i.test(c));
+          if (fallbackRankIdx !== -1) {
+             rankStr = cols[fallbackRankIdx];
+             const upper = rankStr.toUpperCase();
+             category = (upper.includes('PI') && !upper.includes('PSI')) ? 'PI' : 'PSI';
           }
         }
 
-        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('સ્કોડ'));
+        const phoneIdx = cols.findIndex(c => {
+          const digitsOnly = c.replace(/\D/g, '');
+          return digitsOnly.length >= 10 && !c.includes('સ્કોડ') && !c.includes('Squad');
+        });
+        if (phoneIdx !== -1) {
+          phoneStr = cols[phoneIdx].replace(/[^\d]/g, '');
+        }
+
+        const nameIdx = cols.findIndex(c => c.includes('શ્રી') || c.startsWith('Mr.') || c.startsWith('Ms.'));
+        if (nameIdx !== -1) {
+          nameStr = cols[nameIdx];
+        }
+
+        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('Squad') || c.includes('ફરજની') || c.includes('જગ્યા'));
         if (squadIdx !== -1) {
           squadStr = cols[squadIdx];
-        } else {
-          const lastIdx = cols.length - 1;
-          if (lastIdx !== rankIdx && lastIdx !== phoneIdx && lastIdx !== cols.indexOf(nameStr)) {
-            squadStr = cols[lastIdx];
+        }
+
+        const usedIndices = new Set([rankIdx, phoneIdx, nameIdx, squadIdx].filter(idx => idx !== -1));
+        
+        if (!nameStr) {
+          const candidates = cols.map((c, idx) => ({ c, idx }))
+            .filter(({ c, idx }) => !usedIndices.has(idx) && idx !== 0 && c.length > 3 && !/^\d+$/.test(c.replace(/\D/g, '')));
+          if (candidates.length > 0) {
+            const best = candidates.sort((a, b) => b.c.length - a.c.length)[0];
+            nameStr = best.c;
+            usedIndices.add(best.idx);
+          }
+        }
+
+        if (!squadStr) {
+          const candidates = cols.map((c, idx) => ({ c, idx }))
+            .filter(({ c, idx }) => !usedIndices.has(idx) && idx !== 0 && c.length > 2);
+          if (candidates.length > 0) {
+            const best = candidates.sort((a, b) => b.c.length - a.c.length)[0];
+            squadStr = best.c;
+            usedIndices.add(best.idx);
           }
         }
 
@@ -294,11 +314,11 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
             >
               <ClipboardPaste size={20} className="text-amber-400" />
               <div className="text-left">
-                <div className="text-xs sm:text-sm font-black leading-tight">
-                  {lang === 'gu' ? 'ઇમ્પોર્ટ' : 'PASTE IMPORT'}
+                <div className="text-xs sm:text-sm font-black leading-tight uppercase tracking-tight">
+                  PASTE IMPORT
                 </div>
                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  PASTE IMPORT
+                  {lang === 'gu' ? 'ઇમ્પોર્ટ' : 'IMPORT'}
                 </div>
               </div>
             </button>
@@ -315,11 +335,11 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
             >
               <Plus size={20} />
               <div className="text-left">
-                <div className="text-xs sm:text-sm font-black leading-tight">
-                  {lang === 'gu' ? 'નવા ઉમેરો' : 'ADD NEW'}
+                <div className="text-xs sm:text-sm font-black leading-tight uppercase tracking-tight">
+                  ADD NEW
                 </div>
                 <div className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">
-                  ADD NEW
+                  {lang === 'gu' ? 'નવા ઉમેરો' : 'ADD NEW'}
                 </div>
               </div>
             </button>
