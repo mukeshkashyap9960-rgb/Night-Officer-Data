@@ -55,12 +55,19 @@ export function createPiBroadcastMessage(params: {
   officersMap: Record<string, Officer>;
 }): string {
   const { row, officersMap } = params;
+  
   const getOffDetails = (s: string, dutyType: string) => {
     const o = officersMap[s];
     const name = o ? o.name : s;
-    const rank = o ? o.rank : 'પોલીસ ઇન્સ્પેક્ટર';
-    const phone = o ? o.phone : 'નથી';
-    return `• ${dutyType} \n  નામ: ${name}\n  સ્કોડ : ${s}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
+    const rank = o ? o.rank : 'PI';
+    const phone = o ? (o.phone || '').replace(/\s+/g, '') : '';
+    // Format squad string to have spaces around hyphen and strip leading zeros in numbers (e.g. ૦૪ -> ૪)
+    // ૦-૯ are Gujarati digits \u0AE6-\u0AEF
+    const squadFormatted = s.includes('-') 
+      ? s.replace('-', ' - ').replace(/[૦0](\d|[૦-૯])/g, '$1')
+      : s;
+
+    return `• ${dutyType}\n  નામ: ${name}\n  સ્કોડ : ${squadFormatted}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
   };
 
   return `⭐ *ગુજરાત પોલીસ - PI શ્રી નાઈટ* ⭐
@@ -82,12 +89,17 @@ export function createPsiBroadcastMessage(params: {
   officersMap: Record<string, Officer>;
 }): string {
   const { row, nextRow, officersMap } = params;
+
   const getOffDetails = (s: string, dutyType: string) => {
     const o = officersMap[s];
     const name = o ? o.name : s;
-    const rank = o ? o.rank : 'પોલીસ સબ ઇન્સ્પેક્ટર';
-    const phone = o ? o.phone : 'નથી';
-    return `• ${dutyType} \n  નામ: ${name}\n  સ્કોડ : ${s}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
+    const rank = o ? o.rank : 'PSI';
+    const phone = o ? (o.phone || '').replace(/\s+/g, '') : '';
+    const squadFormatted = s.includes('-') 
+      ? s.replace('-', ' - ').replace(/[૦0](\d|[૦-૯])/g, '$1')
+      : s;
+
+    return `• ${dutyType}\n  નામ: ${name}\n  સ્કોડ : ${squadFormatted}\n  હોદ્દો: ${rank}\n  મોબાઇલ: ${phone}`;
   };
 
   const nextCmDetails = nextRow 
@@ -107,3 +119,4 @@ ${nextCmDetails ? `\n📌 *આગામી તારીખ મોરચો*\n${n
 ━━━━━━━━━━━━━━━━━━━━
 જય હિન્દ! 🇮🇳`;
 }
+

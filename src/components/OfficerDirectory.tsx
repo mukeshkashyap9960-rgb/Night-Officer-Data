@@ -128,60 +128,81 @@ export const OfficerDirectory: React.FC<OfficerDirectoryProps> = ({ lang }) => {
 
     const lines = pastedData.trim().split('\n');
     const newOfficers: Partial<Officer>[] = [];
-
-    // Header detection logic
-    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'designation', 'category', 'બ.નં.', 'ફરજની'];
+    const headerKeywords = ['અ.નં.', 'હોદ્દો', 'નામ', 'મોબાઇલ', 'sr', 'rank', 'squad', 'place', 'ફરજની', 'designation'];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
-      const cols = line.split(/\t|,/).map(c => c.trim().replace(/^"|"$/g, ''));
+      // Try different delimiters: Tab, Comma, or 2+ Spaces
+      let cols = line.split('\t');
+      if (cols.length < 3) cols = line.split(',');
+      if (cols.length < 3) cols = line.split(/\s{2,}/);
+      
+      cols = cols.map(c => c.trim().replace(/^"|"$/g, ''));
+
       if (i === 0) {
         const isHeader = cols.some(c => headerKeywords.some(k => c.toLowerCase().includes(k)));
         if (isHeader) continue;
       }
 
-      if (cols.length >= 4) {
-        let category: 'PI' | 'PSI' = 'PSI';
+      if (cols.length >= 3) {
         let rankStr = '';
         let nameStr = '';
         let phoneStr = '';
         let squadStr = '';
+        let category: 'PI' | 'PSI' = 'PSI';
 
-        if (cols.length >= 6) {
-          rankStr = cols[1];
-          nameStr = cols[3];
-          const col4IsPhone = /[\d\s]{7,}/.test(cols[4]);
-          if (col4IsPhone) {
-            phoneStr = cols[4];
-            squadStr = cols[5];
-          } else {
-            squadStr = cols[4];
-            phoneStr = cols[5];
+        // 1. Identify Rank & Category
+        const rankIdx = cols.findIndex(c => /PI|PSI|WPI|WPSI/i.test(c));
+        if (rankIdx !== -1) {
+          rankStr = cols[rankIdx];
+          const upper = rankStr.toUpperCase();
+          category = (upper.includes('PI') && !upper.includes('PSI')) ? 'PI' : 'PSI';
+        }
+
+        // 2. Identify Phone
+        const phoneIdx = cols.findIndex(c => /[\d\s-]{7,}/.test(c) && !c.includes('સ્કોડ'));
+        if (phoneIdx !== -1) {
+          phoneStr = cols[phoneIdx].replace(/\s/g, '');
+        }
+
+        // 3. Identify Name
+        const nameIdx = cols.findIndex(c => c.includes('શ્રી'));
+        if (nameIdx !== -1) {
+          nameStr = cols[nameIdx];
+        } else {
+          // Longest remaining string might be the name
+          const candidates = cols.filter((c, idx) => 
+            idx !== rankIdx && idx !== phoneIdx && idx !== 0 && c.length > 2
+          );
+          if (candidates.length > 0) {
+            nameStr = candidates.sort((a, b) => b.length - a.length)[0];
           }
-        } else {
-          rankStr = cols[0];
-          nameStr = cols[1];
-          phoneStr = cols[2];
-          squadStr = cols[3];
         }
 
-        const upperRank = (rankStr || '').toUpperCase();
-        if (upperRank.includes('PI') && !upperRank.includes('PSI')) {
-          category = 'PI';
+        // 4. Identify Squad
+        const squadIdx = cols.findIndex(c => c.includes('સ્કોડ') || c.includes('સ્કોડ'));
+        if (squadIdx !== -1) {
+          squadStr = cols[squadIdx];
         } else {
-          category = 'PSI';
+          // If not found by keyword, take the last column if it's not already used
+          const lastIdx = cols.length - 1;
+          if (lastIdx !== rankIdx && lastIdx !== phoneIdx && lastIdx !== cols.indexOf(nameStr)) {
+            squadStr = cols[lastIdx];
+          }
         }
 
-        newOfficers.push({
-          category,
-          squad: squadStr || 'સ્કોડ-૦૧',
-          name: nameStr,
-          rank: rankStr,
-          phone: phoneStr.replace(/\s/g, ''),
-          branch: ''
-        });
+        if (nameStr || squadStr) {
+          newOfficers.push({
+            category,
+            squad: squadStr || 'સ્કોડ-૦૧',
+            name: nameStr || 'અધિકારી',
+            rank: rankStr || (category === 'PI' ? 'PI' : 'PSI'),
+            phone: phoneStr,
+            branch: ''
+          });
+        }
       }
     }
 
