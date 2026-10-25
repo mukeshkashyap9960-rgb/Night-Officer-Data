@@ -489,7 +489,7 @@ export default function App() {
 
         {/* Modals */}
         <WhatsAppModal isOpen={whatsAppModal.isOpen} onClose={() => setWhatsAppModal(m => ({ ...m, isOpen: false }))} title={whatsAppModal.title} recipientName={whatsAppModal.recipientName} recipientPhone={whatsAppModal.recipientPhone} initialMessage={whatsAppModal.message} lang={lang} />
-        <DutySwapModal isOpen={swapModal.isOpen} onClose={() => setSwapModal(m => ({ ...m, isOpen: false }))} date={swapModal.date} dutyColumnId={swapModal.dutyColumnId} currentSquad={swapModal.currentSquad} onApplySwap={handleApplySwap} lang={lang} />
+        <DutySwapModal isOpen={swapModal.isOpen} onClose={() => setSwapModal(m => ({ ...m, isOpen: false }))} date={swapModal.date} dutyColumnId={swapModal.dutyColumnId} currentSquad={swapModal.currentSquad} onApplySwap={handleApplySwap} officers={officers} lang={lang} />
         <AlertSettingsModal isOpen={isAlertSettingsOpen} onClose={() => setIsAlertSettingsOpen(false)} config={alertConfig} onSaveConfig={setAlertConfig} onTriggerEmergencyRollCall={() => {}} lang={lang} />
         <DutyAnalyticsModal isOpen={isAnalyticsOpen} onClose={() => setIsAnalyticsOpen(false)} roster={roster} officersMap={officersMap} lang={lang} />
         <RollCallModal isOpen={isRollCallOpen} onClose={() => setIsRollCallOpen(false)} dutyRow={selectedDutyRow} officersMap={officersMap} onSaveAttendance={() => {}} lang={lang} />
