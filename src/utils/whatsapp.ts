@@ -183,11 +183,16 @@ export function formatDutyForExport(
   
   const name = resolved.name?.trim() || '';
   const squad = resolved.squadFormatted?.trim() || '';
+  const rank = resolved.rank?.trim() || 'PI';
+  const phone = resolved.phone?.trim() || '';
 
-  if (name && squad && name !== squad) {
-    return `${name} (${squad})`;
-  }
-  return name || squad || s;
+  const lines = [];
+  if (name) lines.push(`નામ: ${name}`);
+  if (squad) lines.push(`સ્કોડ: ${squad}`);
+  if (rank) lines.push(`હોદ્દો: ${rank}`);
+  if (phone) lines.push(`મોબાઇલ: ${phone}`);
+  
+  return lines.join('\n');
 }
 
 export function cleanPhoneNumber(phone: string): string {
