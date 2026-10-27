@@ -14,7 +14,8 @@ import {
   CheckCircle,
   Bell,
   LogOut,
-  Download
+  Download,
+  MessageSquare
 } from 'lucide-react';
 import { DutyRow, Officer, AlertConfig } from './types/roster';
 import { 
@@ -40,7 +41,8 @@ import {
   createPiBroadcastMessage, 
   createPsiBroadcastMessage,
   formatSquadText,
-  formatDutyForExport
+  formatDutyForExport,
+  resolveOfficerAndSquad
 } from './utils/whatsapp';
 import { supabase, TABLES } from './utils/supabaseClient';
 import { 
@@ -454,6 +456,48 @@ export default function App() {
     showToast('૧ થી ૩૦ સેમ્પલ ટેમ્પલેટ (CSV) ડાઉનલોડ થઈ ગયું!');
   };
 
+  const renderOverviewCell = (squadOrName: string, dutyKey: string, dutyTitle: string, row: DutyRow) => {
+    const resolved = resolveOfficerAndSquad(squadOrName, officersMap, officers);
+    const displayName = resolved.name || squadOrName;
+    const squadBadge = resolved.squadFormatted || formatSquadText(squadOrName) || squadOrName;
+
+    return (
+      <div 
+        onClick={() => setSwapModal({ isOpen: true, date: row.date, dutyColumnId: dutyKey, currentSquad: (row as any)[dutyKey] })}
+        className="group relative p-2.5 bg-slate-950/70 hover:bg-blue-600/20 border border-slate-800 hover:border-blue-500/50 rounded-xl transition-all cursor-pointer shadow-xs min-w-[155px]"
+        title={lang === 'gu' ? `સ્વેપ કરવા ક્લિક કરો (${row.date} - ${dutyTitle})` : `Click to swap`}
+      >
+        <div className="flex flex-col pr-8 min-h-[46px] justify-center">
+          <span className="text-sm font-black text-white leading-tight group-hover:text-blue-300 transition-colors line-clamp-1">
+            {displayName}
+          </span>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-950/70 px-1.5 py-0.5 rounded border border-amber-800/30">
+              {squadBadge}
+            </span>
+            {resolved.rank && (
+              <span className="text-[9px] text-slate-400 font-bold bg-slate-800/80 px-1 py-0.5 rounded border border-slate-700/40">
+                {resolved.rank}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenIndividualWhatsApp(squadOrName, dutyKey, dutyTitle, row.date, row.dayName);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-slate-800/80 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg border border-slate-700/60 hover:border-emerald-500 transition-all cursor-pointer"
+          title="WhatsApp"
+        >
+          <MessageSquare size={13} />
+        </button>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
@@ -634,40 +678,146 @@ export default function App() {
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-lg text-white">Roster Overview</h3>
-                            <button onClick={() => setDashboardView('table')} className="text-blue-500 text-sm font-bold hover:underline cursor-pointer">
-                              {lang === 'gu' ? 'ટેબલ વ્યૂ ખોલો' : 'Open Table View'}
+                      {/* Roster Overview Table View */}
+                      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                          <div className="flex items-center gap-3">
+                            <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-900/30">
+                              <TableIcon className="text-white" size={24} />
+                            </div>
+                            <div>
+                              <h3 className="text-2xl font-black text-white tracking-tight">
+                                {lang === 'gu' ? 'રોસ્ટર ઓવરવ્યૂ (ટેબલ વ્યૂ)' : 'Roster Overview (Table View)'}
+                              </h3>
+                              <p className="text-slate-400 text-xs font-bold mt-0.5">
+                                {lang === 'gu' ? '૧ થી ૩૦ તારીખનું તમામ નાઈટ ડ્યુટી પત્રક' : 'Complete monthly night duty & security roster'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={handleExportCSV}
+                              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95"
+                            >
+                              <Download size={14} />
+                              {lang === 'gu' ? 'CSV ડાઉનલોડ' : 'Download CSV'}
                             </button>
-                          </div>
-                          <div className="space-y-4">
-                            {roster.slice(0, 5).map(row => (
-                              <div key={row.date} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center font-bold text-xs text-slate-400 border border-slate-800">{row.date.split('/')[0]}</div>
-                                  <div>
-                                    <p className="text-sm font-bold text-white">{row.dayName}</p>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">{row.date}</p>
-                                  </div>
-                                </div>
-                                <div className="flex -space-x-2">
-                                  <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold" title="PI">PI</div>
-                                  <div className="w-8 h-8 rounded-full bg-emerald-600 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold" title="PSI">PS</div>
-                                </div>
-                              </div>
-                            ))}
+                            <Link
+                              to="/roster"
+                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-900/30 flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                            >
+                              <TableIcon size={14} />
+                              <span>{lang === 'gu' ? 'સંપૂર્ણ પત્રક ખોલો' : 'Open Full Table'}</span>
+                            </Link>
                           </div>
                         </div>
-                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
-                           <Shield className="absolute -right-8 -bottom-8 w-40 h-40 text-white/5 rotate-12" />
-                           <h3 className="text-xl font-bold mb-2">Security Notice</h3>
-                           <p className="text-blue-100 text-sm leading-relaxed mb-6">All night shift officers must report to the control room via VHF within 15 minutes of shift start.</p>
-                           <button onClick={() => setIsRollCallOpen(true)} className="w-full bg-white text-blue-600 py-3 rounded-xl font-bold text-sm shadow-lg shadow-black/20 hover:scale-[1.02] transition-all cursor-pointer">
-                             Conduct Roll-Call
-                           </button>
+
+                        {/* Roster Table Scrollable */}
+                        <div className="overflow-x-auto rounded-2xl border border-slate-800/80 max-h-[620px] overflow-y-auto scrollbar-thin">
+                          <table className="w-full text-left border-collapse min-w-[1000px]">
+                            <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-md">
+                              <tr className="border-b border-slate-800 text-center">
+                                <th className="py-4 px-4 text-xs font-black text-slate-300 uppercase tracking-wider text-left w-36">
+                                  {lang === 'gu' ? 'તારીખ અને વાર' : 'Date & Day'}
+                                </th>
+                                <th className="py-4 px-3 text-xs font-black text-blue-400 uppercase tracking-wider border-l border-slate-800/50">
+                                  {lang === 'gu' ? 'કોમ્યુનલ (PI)' : 'Communal (PI)'}
+                                </th>
+                                <th className="py-4 px-3 text-xs font-black text-indigo-400 uppercase tracking-wider border-l border-slate-800/50">
+                                  {lang === 'gu' ? 'ડીવીઝન (PI)' : 'Division (PI)'}
+                                </th>
+                                <th className="py-4 px-3 text-xs font-black text-amber-400 uppercase tracking-wider border-l border-slate-800/50">
+                                  {lang === 'gu' ? 'CM મોરચો (PSI)' : 'CM Route (PSI)'}
+                                </th>
+                                <th className="py-4 px-3 text-xs font-black text-emerald-400 uppercase tracking-wider border-l border-slate-800/50">
+                                  {lang === 'gu' ? 'કેમ્પસ (PSI)' : 'Campus (PSI)'}
+                                </th>
+                                <th className="py-4 px-3 text-xs font-black text-rose-400 uppercase tracking-wider border-l border-slate-800/50">
+                                  {lang === 'gu' ? 'VVIP (PSI)' : 'VVIP (PSI)'}
+                                </th>
+                                <th className="py-4 px-3 text-center text-xs font-black text-slate-300 uppercase tracking-wider border-l border-slate-800/50 w-28">
+                                  {lang === 'gu' ? 'પત્રક / SMS' : 'Broadcast'}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/50 font-bold">
+                              {roster.map((row) => {
+                                const isCurrentDate = row.date === selectedDate;
+                                return (
+                                  <tr
+                                    key={row.date}
+                                    className={`transition-all hover:bg-slate-800/40 ${isCurrentDate ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`}
+                                  >
+                                    <td className="py-3 px-4">
+                                      <div className="flex flex-col">
+                                        <span className="text-base font-black text-white leading-tight">{row.dayName}</span>
+                                        <span className="text-xs font-mono font-black text-blue-400 tracking-wider">{row.date}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-2.5 border-l border-slate-800/30">
+                                      {renderOverviewCell(row.communalPi, 'communalPi', 'કોમ્યુનલ નાઈટ', row)}
+                                    </td>
+                                    <td className="py-2.5 px-2.5 border-l border-slate-800/30">
+                                      {renderOverviewCell(row.divisionPi, 'divisionPi', 'ડીવીઝન નાઈટ', row)}
+                                    </td>
+                                    <td className="py-2.5 px-2.5 border-l border-slate-800/30">
+                                      {renderOverviewCell(row.cmMorchoPsi, 'cmMorchoPsi', 'CM મોરચો', row)}
+                                    </td>
+                                    <td className="py-2.5 px-2.5 border-l border-slate-800/30">
+                                      {renderOverviewCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}
+                                    </td>
+                                    <td className="py-2.5 px-2.5 border-l border-slate-800/30">
+                                      {renderOverviewCell(row.vvipPsi, 'vvipPsi', 'VVIP બંદોબસ્ત', row)}
+                                    </td>
+                                    <td className="py-2.5 px-2.5 text-center border-l border-slate-800/30">
+                                      <div className="flex flex-col gap-1 items-center justify-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenPiBroadcast(row)}
+                                          className="w-full px-2 py-1 bg-blue-600/15 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer border border-blue-500/20"
+                                          title="PI Broadcast WhatsApp"
+                                        >
+                                          PI પત્રક
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenPsiBroadcast(row, roster.indexOf(row))}
+                                          className="w-full px-2 py-1 bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer border border-emerald-500/20"
+                                          title="PSI Broadcast WhatsApp"
+                                        >
+                                          PSI પત્રક
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
+                      </div>
+
+                      {/* Security Notice Banner */}
+                      <div className="bg-gradient-to-r from-blue-900/50 via-slate-900 to-indigo-950/50 border border-blue-800/40 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30 shrink-0">
+                            <Shield size={24} />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-bold text-white">Security & VHF Notice</h4>
+                            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                              All night shift officers must report to the control room via VHF within 15 minutes of shift start.
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setIsRollCallOpen(true)} 
+                          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-900/30 transition-all cursor-pointer shrink-0 active:scale-95"
+                        >
+                          Conduct Roll-Call
+                        </button>
                       </div>
                     </>
                   )}
