@@ -374,28 +374,35 @@ export default function App() {
     showToast(`તારીખ ${date} માટે ડ્યુટી સફળતાપૂર્વક બદલાઈ ગઈ.`);
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      'તારીખ',
-      'વાર',
-      'કોમ્યુનલ નાઈટ (PI)',
-      'ડીવીઝન નાઈટ (PI)',
-      'CM મોરચો (PSI)',
-      'કેમ્પસ નાઈટ (PSI)',
-      'VVIP બંદોબસ્ત (PSI)'
-    ];
+  const handleExportCSV = (data?: DutyRow[], filterType: 'all' | 'pi' | 'psi' = 'all') => {
+    const exportData = data || roster;
+    
+    let headers = ['તારીખ', 'વાર'];
+    if (filterType === 'all' || filterType === 'pi') {
+      headers.push('કોમ્યુનલ નાઈટ (PI)', 'ડીવીઝન નાઈટ (PI)');
+    }
+    if (filterType === 'all' || filterType === 'psi') {
+      headers.push('CM મોરચો (PSI)', 'કેમ્પસ નાઈટ (PSI)', 'VVIP બંદોબસ્ત (PSI)');
+    }
 
-    const rows = roster.map(r => [
-      `"${r.date}"`,
-      `"${r.dayName}"`,
-      `"${formatDutyForExport(r.communalPi, officersMap, officers, 'PI શ્રી, સ્કોડ-૦૧').replace(/"/g, '""')}"`,
-      `"${formatDutyForExport(r.divisionPi, officersMap, officers, 'PI શ્રી, સ્કોડ-૦૮').replace(/"/g, '""')}"`,
-      `"${formatDutyForExport(r.cmMorchoPsi, officersMap, officers, 'સ્કોડ-૦૯').replace(/"/g, '""')}"`,
-      `"${formatDutyForExport(r.campusPsi, officersMap, officers, 'સ્કોડ-૦૧').replace(/"/g, '""')}"`,
-      `"${formatDutyForExport(r.vvipPsi, officersMap, officers, 'સ્કોડ-૦૬').replace(/"/g, '""')}"`
-    ]);
+    const rows = exportData.map(r => {
+      const row = [`"${r.date}"`, `"${r.dayName}"`];
+      if (filterType === 'all' || filterType === 'pi') {
+        row.push(
+          `"${formatDutyForExport(r.communalPi, officersMap, officers, 'PI શ્રી, સ્કોડ-૦૧').replace(/"/g, '""')}"`,
+          `"${formatDutyForExport(r.divisionPi, officersMap, officers, 'PI શ્રી, સ્કોડ-૦૮').replace(/"/g, '""')}"`
+        );
+      }
+      if (filterType === 'all' || filterType === 'psi') {
+        row.push(
+          `"${formatDutyForExport(r.cmMorchoPsi, officersMap, officers, 'સ્કોડ-૦૯').replace(/"/g, '""')}"`,
+          `"${formatDutyForExport(r.campusPsi, officersMap, officers, 'સ્કોડ-૦૧').replace(/"/g, '""')}"`,
+          `"${formatDutyForExport(r.vvipPsi, officersMap, officers, 'સ્કોડ-૦૬').replace(/"/g, '""')}"`
+        );
+      }
+      return row;
+    });
 
-    // UTF-8 BOM (\uFEFF) to guarantee Excel reads Gujarati text accurately
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -403,12 +410,13 @@ export default function App() {
     link.href = url;
     const now = new Date();
     const dateStr = `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}`;
-    link.download = `Crime_Branch_Duty_Roster_With_Officers_${dateStr}.csv`;
+    const typeLabel = filterType === 'all' ? 'Full' : filterType.toUpperCase();
+    link.download = `Crime_Branch_Duty_Roster_${typeLabel}_${dateStr}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showToast(lang === 'gu' ? '૧ થી ૩૦ ડ્યુટી પત્રક (PI/PSI શ્રી ના નામ અને સ્કોડ સાથે) ડાઉનલોડ થઈ ગયું!' : '1 to 30 Duty Roster with Officer Names & Squads downloaded!');
+    showToast(lang === 'gu' ? `${typeLabel} ડ્યુટી પત્રક ડાઉનલોડ થઈ ગયું!` : `${typeLabel} Duty Roster downloaded!`);
   };
 
   const handleDownloadTemplate = () => {
@@ -593,7 +601,7 @@ export default function App() {
                         </button>
                       </div>
 
-                      <button onClick={handleExportCSV} className="bg-slate-900 hover:bg-slate-800 text-slate-300 px-4 py-2 rounded-xl border border-slate-800 text-sm font-semibold transition-all cursor-pointer flex items-center gap-2">
+                      <button onClick={() => handleExportCSV()} className="bg-slate-900 hover:bg-slate-800 text-slate-300 px-4 py-2 rounded-xl border border-slate-800 text-sm font-semibold transition-all cursor-pointer flex items-center gap-2">
                         <Download size={16} />
                         {lang === 'gu' ? 'ડાઉનલોડ પત્રક' : 'Export'}
                       </button>
@@ -614,7 +622,7 @@ export default function App() {
                         setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: row ? (row as any)[id] : '' });
                       }}
                       onImportPaste={handleImportPaste}
-                      onExportRoster={handleExportCSV}
+                      onExportRoster={(data, type) => handleExportCSV(data, type)}
                       onDownloadTemplate={handleDownloadTemplate}
                       lang={lang}
                     />
@@ -698,7 +706,7 @@ export default function App() {
                           <div className="flex items-center gap-2.5 flex-wrap">
                             <button
                               type="button"
-                              onClick={handleExportCSV}
+                              onClick={() => handleExportCSV()}
                               className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95"
                             >
                               <Download size={14} />
@@ -838,7 +846,7 @@ export default function App() {
                     setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: row ? (row as any)[id] : '' });
                   }}
                   onImportPaste={handleImportPaste}
-                  onExportRoster={handleExportCSV}
+                  onExportRoster={(data, type) => handleExportCSV(data, type)}
                   onDownloadTemplate={handleDownloadTemplate}
                   lang={lang}
                 />

@@ -30,7 +30,7 @@ interface RosterTableProps {
   onPsiBroadcast: (row: DutyRow, index: number) => void;
   onSwapDuty: (date: string, dutyColumnId: string) => void;
   onImportPaste: (pastedText: string, mode: 'append' | 'replace') => void;
-  onExportRoster?: () => void;
+  onExportRoster?: (data: DutyRow[], filterType: 'all' | 'pi' | 'psi') => void;
   onDownloadTemplate?: () => void;
   lang: 'gu' | 'en';
 }
@@ -263,16 +263,14 @@ export const RosterTable: React.FC<RosterTableProps> = ({
 
           {/* Action Buttons: 1 to 30 Download, Import, and Print */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {onExportRoster && (
               <button 
-                onClick={onExportRoster}
+                onClick={() => onExportRoster?.(filteredRoster, activeFilter)}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-blue-900/30 cursor-pointer active:scale-95"
-                title={lang === 'gu' ? '૧ થી ૩૦ ડ્યુટી પત્રક ડાઉનલોડ કરો (Excel / CSV)' : 'Download 1 to 30 Duty Roster (Excel / CSV)'}
+                title={lang === 'gu' ? 'ફિલ્ટર કરેલ ડ્યુટી પત્રક ડાઉનલોડ કરો (Excel / CSV)' : 'Download filtered Duty Roster (Excel / CSV)'}
               >
                 <Download size={20} />
-                <span>{lang === 'gu' ? '૧ થી ૩૦ પત્રક ડાઉનલોડ' : 'DOWNLOAD 1-30 ROSTER'}</span>
+                <span>{lang === 'gu' ? 'પત્રક ડાઉનલોડ' : 'DOWNLOAD ROSTER'}</span>
               </button>
-            )}
 
             <button 
               onClick={() => setIsImportModalOpen(true)}
@@ -419,7 +417,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({
                   {onExportRoster && (
                     <button
                       type="button"
-                      onClick={onExportRoster}
+                      onClick={() => onExportRoster(roster, 'all')}
                       className="px-3.5 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs font-bold rounded-xl border border-blue-500/30 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                     >
                       <Download size={14} />
