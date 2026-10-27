@@ -45,7 +45,7 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'PI' | 'PSI'>('ALL');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [editingOfficer, setEditingOfficer] = useState<Officer | null>(null);
   const [isAddOfficerModalOpen, setIsAddOfficerModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -430,16 +430,26 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
 
           <div className="flex bg-slate-950 border-2 border-slate-800 rounded-2xl p-1.5 shadow-inner">
              <button 
-               onClick={() => setViewMode('grid')}
-               className={`p-3 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-slate-800 text-blue-500 shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}
+               type="button"
+               onClick={() => setViewMode('table')}
+               className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                 viewMode === 'table' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' : 'text-slate-400 hover:text-white'
+               }`}
+               title={lang === 'gu' ? 'ટેબલ વ્યૂ' : 'Table View'}
              >
-                <LayoutGrid size={20} />
+                <ListIcon size={16} />
+                <span>{lang === 'gu' ? 'ટેબલ વ્યૂ' : 'Table View'}</span>
              </button>
              <button 
-               onClick={() => setViewMode('list')}
-               className={`p-3 rounded-xl transition-all ${viewMode === 'list' ? 'bg-slate-800 text-blue-500 shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}
+               type="button"
+               onClick={() => setViewMode('grid')}
+               className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                 viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' : 'text-slate-400 hover:text-white'
+               }`}
+               title={lang === 'gu' ? 'કાર્ડ વ્યૂ' : 'Card View'}
              >
-                <ListIcon size={20} />
+                <LayoutGrid size={16} />
+                <span>{lang === 'gu' ? 'કાર્ડ વ્યૂ' : 'Card View'}</span>
              </button>
           </div>
         </div>
@@ -451,11 +461,119 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
            <div className="w-24 h-24 border-8 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto shadow-2xl shadow-blue-900/20"></div>
            <p className="text-slate-500 font-black tracking-[0.3em] uppercase text-sm">Synchronizing Database...</p>
         </div>
+      ) : viewMode === 'table' ? (
+        /* Table View */
+        <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl">
+          <table className="w-full text-left border-collapse min-w-[950px]">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950/90 text-xs sm:text-sm font-black text-slate-300 uppercase tracking-wider">
+                <th className="px-6 py-6 text-center w-16">{lang === 'gu' ? 'અ.નં.' : 'Sr.'}</th>
+                <th className="px-6 py-6 border-l border-slate-800/60 w-32">{lang === 'gu' ? 'કેટેગરી' : 'Category'}</th>
+                <th className="px-6 py-6 border-l border-slate-800/60 w-36">{lang === 'gu' ? 'હોદ્દો' : 'Rank'}</th>
+                <th className="px-6 py-6 border-l border-slate-800/60">{lang === 'gu' ? 'અધિકારી શ્રી નું નામ' : 'Officer Name'}</th>
+                <th className="px-6 py-6 border-l border-slate-800/60">{lang === 'gu' ? 'સ્કોડ / શાખા' : 'Squad / Branch'}</th>
+                <th className="px-6 py-6 border-l border-slate-800/60">{lang === 'gu' ? 'મોબાઇલ નંબર' : 'Mobile Number'}</th>
+                <th className="px-6 py-6 text-center border-l border-slate-800/60 w-52">{lang === 'gu' ? 'ક્રિયાઓ' : 'Actions'}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-bold">
+              {filteredOfficers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-24 text-center text-slate-500">
+                    <Users size={48} className="mx-auto mb-3 opacity-20" />
+                    <p className="text-lg font-bold">{lang === 'gu' ? 'કોઈ અધિકારી મળ્યા નથી' : 'No officers found'}</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredOfficers.map((o, idx) => (
+                  <tr key={o.id} className="hover:bg-slate-800/40 transition-colors group">
+                    <td className="px-6 py-4 text-center text-slate-400 font-mono text-sm">
+                      {idx + 1}
+                    </td>
+                    <td className="px-6 py-4 border-l border-slate-800/40">
+                      <span className={`text-[11px] font-black px-3 py-1 rounded-full uppercase border tracking-wider ${
+                        o.category === 'PI' 
+                          ? 'bg-blue-950/60 text-blue-400 border-blue-800' 
+                          : 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
+                      }`}>
+                        {o.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 border-l border-slate-800/40 text-slate-300 font-semibold">
+                      {o.rank || (o.category === 'PI' ? 'PI' : 'PSI')}
+                    </td>
+                    <td className="px-6 py-4 border-l border-slate-800/40">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                          o.category === 'PI' ? 'bg-blue-600/20 text-blue-400' : 'bg-emerald-600/20 text-emerald-400'
+                        }`}>
+                          <User size={16} />
+                        </div>
+                        <span className="text-white text-base font-black group-hover:text-blue-400 transition-colors">
+                          {o.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 border-l border-slate-800/40">
+                      <span className="text-amber-300 bg-amber-950/50 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-amber-800/30">
+                        {formatSquadText(o.squad) || o.squad}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 border-l border-slate-800/40">
+                      {o.phone ? (
+                        <a 
+                          href={`tel:${o.phone}`}
+                          className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-mono font-bold text-sm transition-colors"
+                        >
+                          <Phone size={14} />
+                          <span>{o.phone}</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-600 text-xs font-mono">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center border-l border-slate-800/40">
+                      <div className="flex items-center justify-center gap-2">
+                        {o.phone && (
+                          <button
+                            type="button"
+                            onClick={() => window.open(`https://wa.me/91${o.phone.replace(/\D/g, '')}`, '_blank')}
+                            className="p-2 text-emerald-400 hover:text-white bg-slate-950 hover:bg-emerald-600 rounded-xl transition-all cursor-pointer border border-slate-800 hover:border-emerald-500 shadow-sm"
+                            title="WhatsApp"
+                          >
+                            <MessageSquare size={15} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingOfficer(o);
+                            setIsAddOfficerModalOpen(true);
+                          }}
+                          className="p-2 text-blue-400 hover:text-white bg-slate-950 hover:bg-blue-600 rounded-xl transition-all cursor-pointer border border-slate-800 hover:border-blue-500 shadow-sm"
+                          title={lang === 'gu' ? 'એડિટ કરો' : 'Edit'}
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOfficer(o)}
+                          className="p-2 text-rose-400 hover:text-white bg-slate-950 hover:bg-rose-600 rounded-xl transition-all cursor-pointer border border-rose-950/60 hover:border-rose-500 shadow-sm"
+                          title={lang === 'gu' ? 'ડિલીટ કરો' : 'Delete'}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       ) : (
-        <div className={viewMode === 'grid' 
-          ? "grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8" 
-          : "flex flex-col gap-4"
-        }>
+        /* Cards Grid View */
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8">
           {filteredOfficers.length === 0 ? (
             <div className="col-span-full py-32 text-center bg-slate-900/30 rounded-[4rem] border-4 border-dashed border-slate-800/50">
                <Users size={80} className="mx-auto text-slate-800 mb-6 opacity-20" />
@@ -466,26 +584,20 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
             filteredOfficers.map((o) => (
               <div 
                 key={o.id}
-                className={`bg-slate-900 border border-slate-800/80 transition-all group shadow-2xl relative overflow-hidden flex ${
-                  viewMode === 'grid' 
-                    ? 'flex-col p-10 rounded-[3rem] gap-8 hover:border-blue-500/40 hover:shadow-blue-900/10' 
-                    : 'flex-row items-center p-6 rounded-[2rem] gap-6 hover:bg-slate-800/40'
-                }`}
+                className="bg-slate-900 border border-slate-800/80 transition-all group shadow-2xl relative overflow-hidden flex flex-col p-10 rounded-[3rem] gap-8 hover:border-blue-500/40 hover:shadow-blue-900/10"
               >
                 {/* Background Accent */}
                 <div className={`absolute top-0 right-0 w-48 h-48 -mr-12 -mt-12 opacity-5 transition-transform group-hover:scale-125 group-hover:rotate-12 pointer-events-none ${o.category === 'PI' ? 'text-blue-500' : 'text-emerald-500'}`}>
                    <Shield className="w-full h-full" />
                 </div>
 
-                <div className={`flex items-center gap-6 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                  <div className={`rounded-3xl flex items-center justify-center shadow-2xl shrink-0 ${
-                    viewMode === 'grid' ? 'w-20 h-20' : 'w-14 h-14'
-                  } ${
+                <div className="flex items-center gap-6">
+                  <div className={`rounded-3xl flex items-center justify-center shadow-2xl shrink-0 w-20 h-20 ${
                     o.category === 'PI' 
                       ? 'bg-blue-600/20 text-blue-500 border border-blue-500/20' 
                       : 'bg-emerald-600/20 text-emerald-500 border border-emerald-500/20'
                   }`}>
-                    <User size={viewMode === 'grid' ? 40 : 28} />
+                    <User size={40} />
                   </div>
                   <div>
                     <div className="flex items-center gap-3 mb-2">
@@ -496,41 +608,36 @@ export const OfficerListView: React.FC<OfficerListViewProps> = ({ lang }) => {
                       </span>
                       <span className="text-xs font-mono font-black text-slate-500 uppercase tracking-widest">{formatSquadText(o.squad) || o.squad}</span>
                     </div>
-                    <h4 className={`${viewMode === 'grid' ? 'text-3xl' : 'text-xl'} font-black text-white group-hover:text-blue-400 transition-colors leading-tight tracking-tight`}>
+                    <h4 className="text-3xl font-black text-white group-hover:text-blue-400 transition-colors leading-tight tracking-tight">
                       {o.name}
                     </h4>
-                    {viewMode === 'list' && <p className="text-slate-500 font-bold text-sm mt-1">{o.rank}</p>}
                   </div>
                 </div>
 
-                <div className={`${viewMode === 'grid' ? 'space-y-4' : 'flex items-center gap-8 px-8 border-l border-slate-800'}`}>
-                  {viewMode === 'grid' && (
-                    <div className="flex items-center gap-5 p-5 bg-slate-950/50 rounded-3xl border border-slate-800/50">
-                      <BadgeCheck className="text-blue-500 shrink-0" size={24} />
-                      <div>
-                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Designation</p>
-                        <p className="text-xl font-bold text-slate-200">{o.rank || 'General Officer'}</p>
-                      </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-5 p-5 bg-slate-950/50 rounded-3xl border border-slate-800/50">
+                    <BadgeCheck className="text-blue-500 shrink-0" size={24} />
+                    <div>
+                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Designation</p>
+                      <p className="text-xl font-bold text-slate-200">{o.rank || 'General Officer'}</p>
                     </div>
-                  )}
+                  </div>
 
-                  <div className={`flex items-center gap-5 p-5 bg-slate-950/50 rounded-3xl border border-slate-800/50 ${viewMode === 'list' ? 'border-none bg-transparent p-0' : ''}`}>
-                    <Phone className="text-emerald-500 shrink-0" size={viewMode === 'grid' ? 24 : 20} />
+                  <div className="flex items-center gap-5 p-5 bg-slate-950/50 rounded-3xl border border-slate-800/50">
+                    <Phone className="text-emerald-500 shrink-0" size={24} />
                     <div>
                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Contact Line</p>
-                      <a href={`tel:${o.phone}`} className={`${viewMode === 'grid' ? 'text-2xl' : 'text-lg'} font-mono font-black text-emerald-500 hover:text-emerald-400 transition-colors`}>
+                      <a href={`tel:${o.phone}`} className="text-2xl font-mono font-black text-emerald-500 hover:text-emerald-400 transition-colors">
                         {o.phone || '982XXXXXXX'}
                       </a>
                     </div>
                   </div>
                 </div>
 
-                <div className={`${viewMode === 'grid' ? 'w-full' : 'w-auto'} flex items-center gap-2 pt-2 border-t border-slate-800/60`}>
+                <div className="w-full flex items-center gap-2 pt-2 border-t border-slate-800/60">
                   <button 
                     onClick={() => window.open(`https://wa.me/91${o.phone}`, '_blank')}
-                    className={`bg-slate-950 hover:bg-emerald-600 text-slate-400 hover:text-white rounded-2xl font-black flex items-center justify-center gap-2 transition-all border border-slate-800 hover:border-emerald-500 cursor-pointer shadow-inner active:scale-[0.95] flex-1 ${
-                      viewMode === 'grid' ? 'py-3.5 text-sm' : 'px-6 py-2.5 text-xs'
-                    }`}
+                    className="bg-slate-950 hover:bg-emerald-600 text-slate-400 hover:text-white rounded-2xl font-black flex items-center justify-center gap-2 transition-all border border-slate-800 hover:border-emerald-500 cursor-pointer shadow-inner active:scale-[0.95] flex-1 py-3.5 text-sm"
                   >
                     <MessageSquare size={16} />
                     <span>WhatsApp</span>

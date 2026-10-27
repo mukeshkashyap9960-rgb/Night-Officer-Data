@@ -63,8 +63,17 @@ export function resolveOfficerAndSquad(
 ): { name: string; squadFormatted: string; rank: string; phone: string } {
   const query = (s || '').trim();
 
+  // If query contains parentheses e.g. "શ્રી આર. કે. જાડેજા (સ્કોડ - ૦૧)"
+  let extractedNamePart = '';
+  let extractedSquadPart = '';
+  const parenMatch = query.match(/^([^(]+)\s*\(([^)]+)\)$/);
+  if (parenMatch) {
+    extractedNamePart = parenMatch[1].trim();
+    extractedSquadPart = parenMatch[2].trim();
+  }
+
   // 1. Direct map lookup (officersMap indexed by name, squad, and id)
-  let o: Officer | undefined = officersMap[query];
+  let o: Officer | undefined = officersMap[query] || (extractedNamePart ? officersMap[extractedNamePart] : undefined);
 
   // 2. Search in officersList
   if (!o && officersList.length > 0) {
@@ -72,7 +81,9 @@ export function resolveOfficerAndSquad(
       off => off.name === query || 
              off.squad === query || 
              off.id === query ||
-             off.phone === query
+             off.phone === query ||
+             (extractedNamePart && off.name === extractedNamePart) ||
+             (extractedSquadPart && (off.squad === extractedSquadPart || formatSquadText(off.squad) === formatSquadText(extractedSquadPart)))
     );
   }
 
@@ -82,31 +93,49 @@ export function resolveOfficerAndSquad(
       off => off.name === query || 
              off.squad === query || 
              off.id === query ||
-             off.phone === query
+             off.phone === query ||
+             (extractedNamePart && off.name === extractedNamePart) ||
+             (extractedSquadPart && (off.squad === extractedSquadPart || formatSquadText(off.squad) === formatSquadText(extractedSquadPart)))
     );
   }
 
   // 4. Try matching normalized squad text
   if (!o && (query.includes('સ્કોડ') || query.includes('PI') || /\d/.test(query))) {
-    const sFmt = formatSquadText(query);
+    const sFmt = formatSquadText(extractedSquadPart || query);
     o = officersList.find(off => formatSquadText(off.squad) === sFmt) ||
         DEFAULT_OFFICERS.find(off => formatSquadText(off.squad) === sFmt);
   }
 
   // Determine officer name
-  let name = query;
+  let name = extractedNamePart || query;
   if (o && o.name) {
     name = o.name;
+  } else {
+    // If query doesn't match an officer directly, let's check if fallbackSquadSlot or roster context points to a default officer for this slot, or if query is a custom string
+    // If query contains custom description like "I Division" but fallbackSquadSlot is e.g. "PI શ્રી, સ્કોડ-૦૮", let's find the officer for fallbackSquadSlot
+    if (fallbackSquadSlot) {
+      const fallbackOfficer = officersList.find(off => off.squad === fallbackSquadSlot || off.id === fallbackSquadSlot) ||
+                              DEFAULT_OFFICERS.find(off => off.squad === fallbackSquadSlot || off.id === fallbackSquadSlot);
+      if (fallbackOfficer) {
+        o = fallbackOfficer;
+        name = fallbackOfficer.name;
+      }
+    }
+  }
+
+  // Strip accidental parenthesis from name
+  if (name.includes('(')) {
+    name = name.split('(')[0].trim();
   }
 
   // Determine squad text
-  let rawSquad = '';
+  let rawSquad = extractedSquadPart || '';
   if (o && o.squad && o.squad !== o.name) {
     rawSquad = o.squad;
   } else if (o && o.branch && o.branch !== o.name) {
     rawSquad = o.branch;
   } else if (query.includes('સ્કોડ') || query.includes('PI') || /\d/.test(query) || /સાયબર|SOG|મહિલા|EOW/i.test(query)) {
-    rawSquad = query;
+    rawSquad = extractedSquadPart || query;
   } else if (fallbackSquadSlot) {
     rawSquad = fallbackSquadSlot;
   } else {
@@ -136,6 +165,29 @@ export function resolveOfficerAndSquad(
   const phone = o ? (o.phone || '').replace(/\D/g, '') : '';
 
   return { name, squadFormatted, rank, phone };
+}
+
+/**
+ * Formats a duty slot for download / export as requested:
+ * "PI અથવા PSI શ્રી નુ નામ, સ્કોડ નંબર આ ડાઉનલોડ થાય"
+ * e.g. "શ્રી આર. કે. જાડેજા (સ્કોડ - ૦૧)"
+ */
+export function formatDutyForExport(
+  s: string,
+  officersMap: Record<string, Officer> = {},
+  officersList: Officer[] = [],
+  fallbackSlot?: string
+): string {
+  if (!s || !s.trim()) return '';
+  const resolved = resolveOfficerAndSquad(s, officersMap, officersList, fallbackSlot);
+  
+  const name = resolved.name?.trim() || '';
+  const squad = resolved.squadFormatted?.trim() || '';
+
+  if (name && squad && name !== squad) {
+    return `${name} (${squad})`;
+  }
+  return name || squad || s;
 }
 
 export function cleanPhoneNumber(phone: string): string {
@@ -189,6 +241,18 @@ export function createIndividualDutyMessage(params: {
   const phone = officer?.phone || resolved.phone || 'ઉપલબ્ધ નથી';
   const squadFormatted = resolved.squadFormatted || formatSquadText(squadText);
 
+  if (dutyTitleGu.includes('CM મોરચો') || dutyTitleGu.includes('કેમ્પસ') || dutyTitleGu.includes('VVIP')) {
+    const cleanTitle = dutyTitleGu.replace(/\s*\(PSI\)/g, '').trim();
+    return `🚨 *ક્રાઇમ બ્રાન્ચ - ${cleanTitle}* 🚨
+📅 તારીખ: ${date} (${dayName})
+      સ્કોડ : ${squadFormatted}
+👮 નામ: ${officerName}
+🏷️ હોદ્દો: ${officerRank}
+🛡️ પ્રકાર: ${dutyTitleGu}
+📞 મોબાઇલ નંબર: ${phone}
+જય હિન્દ! 🇮🇳`;
+  }
+
   return `🚨 *ક્રાઇમ બ્રાન્ચ - નાઈટ ડ્યુટી* 🚨
 📅 તારીખ: ${date} (${dayName})
       સ્કોડ : ${squadFormatted}
@@ -213,11 +277,18 @@ export function createPiBroadcastMessage(params: {
   
   const getOffDetails = (s: string, dutyType: string, fallbackSlot: string) => {
     const resolved = resolveOfficerAndSquad(s, officersMap, officersList, fallbackSlot);
+    let typeLine = '';
+    const cleanS = (s || '').trim();
+    if (cleanS.includes('ડિવીઝન') || cleanS.includes('ડીવીઝન') || cleanS.includes('I ડીવી') || cleanS.includes('K ડીવી') || cleanS.includes('M ડીવી') || cleanS.includes('પ્રકાર')) {
+      if (!cleanS.includes('PI શ્રી') && !cleanS.includes('શ્રી')) {
+        typeLine = `પ્રકાર : ${cleanS}`;
+      }
+    }
 
     return `• ${dutyType}
 નામ: ${resolved.name}
 સ્કોડ : ${resolved.squadFormatted}
-હોદ્દો: ${resolved.rank}
+હોદ્દો: ${resolved.rank}${typeLine ? `\n${typeLine}` : ''}
 મોબાઇલ: ${resolved.phone}`;
   };
 

@@ -18,7 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { DutyRow, Officer } from '../types/roster';
-import { formatSquadText } from '../utils/whatsapp';
+import { formatSquadText, resolveOfficerAndSquad } from '../utils/whatsapp';
 
 interface RosterTableProps {
   roster: DutyRow[];
@@ -146,10 +146,9 @@ export const RosterTable: React.FC<RosterTableProps> = ({
   };
 
   const renderCell = (squadOrName: string, dutyKey: string, dutyTitle: string, row: DutyRow) => {
-    // Find officer by map (indexed by squad & name) or search in officers array
-    const officer = officersMap[squadOrName] || officers.find(o => o.name === squadOrName || o.squad === squadOrName || o.id === squadOrName);
-    const displayName = officer ? officer.name : squadOrName;
-    const squadBadge = formatSquadText(officer?.squad || squadOrName) || officer?.squad || squadOrName;
+    const resolved = resolveOfficerAndSquad(squadOrName, officersMap, officers);
+    const displayName = resolved.name || squadOrName;
+    const squadBadge = resolved.squadFormatted || formatSquadText(squadOrName) || squadOrName;
 
     return (
       <div 
@@ -165,9 +164,9 @@ export const RosterTable: React.FC<RosterTableProps> = ({
             <span className="text-[11px] font-mono font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/30">
               {squadBadge}
             </span>
-            {officer?.rank && (
+            {resolved.rank && (
               <span className="text-[10px] text-slate-400 font-bold bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/50">
-                {officer.rank}
+                {resolved.rank}
               </span>
             )}
           </div>

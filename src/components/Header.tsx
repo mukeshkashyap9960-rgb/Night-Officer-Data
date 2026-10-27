@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Bell, 
   Settings, 
@@ -8,7 +9,8 @@ import {
   Volume2, 
   VolumeX,
   Calendar,
-  Share2
+  Share2,
+  Table
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -104,6 +106,15 @@ export const Header: React.FC<HeaderProps> = ({
             {lang === 'gu' ? 'EN' : 'GU'}
           </span>
         </button>
+
+        <Link
+          to="/roster"
+          className="hidden sm:flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl text-xs font-black border border-blue-500/30 transition-all shadow-sm cursor-pointer"
+          title={lang === 'gu' ? 'ડ્યુટી પત્રક ટેબલ વ્યૂ' : 'Duty Roster Table View'}
+        >
+          <Table size={15} />
+          <span>{lang === 'gu' ? 'ટેબલ વ્યૂ' : 'Table View'}</span>
+        </Link>
 
         <button
           onClick={onOpenBroadcastToday}

@@ -39,7 +39,8 @@ import {
   createIndividualDutyMessage, 
   createPiBroadcastMessage, 
   createPsiBroadcastMessage,
-  formatSquadText 
+  formatSquadText,
+  formatDutyForExport
 } from './utils/whatsapp';
 import { supabase, TABLES } from './utils/supabaseClient';
 import { 
@@ -54,8 +55,8 @@ function Sidebar({ lang, isOpen, onClose }: { lang: 'gu' | 'en', isOpen: boolean
   const location = useLocation();
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: lang === 'gu' ? 'ડેશબોર્ડ' : 'Dashboard' },
-    { path: '/roster', icon: TableIcon, label: lang === 'gu' ? 'ડ્યુટી પત્રક' : 'Full Roster' },
-    { path: '/list', icon: Users, label: lang === 'gu' ? 'અધિકારી લિસ્ટ' : 'User List View' },
+    { path: '/roster', icon: TableIcon, label: lang === 'gu' ? 'ડ્યુટી પત્રક (ટેબલ વ્યૂ)' : 'Duty Roster (Table View)' },
+    { path: '/list', icon: Users, label: lang === 'gu' ? 'અધિકારી લિસ્ટ (ટેબલ વ્યૂ)' : 'Officer List (Table View)' },
     { path: '/officers', icon: Settings, label: lang === 'gu' ? 'ડાયરેક્ટરી સેટઅપ' : 'Manage Officers' },
     { path: '/analytics', icon: BarChart3, label: lang === 'gu' ? 'એનાલિટિક્સ' : 'Analytics' },
   ];
@@ -175,6 +176,7 @@ export default function App() {
   const [isAlertSettingsOpen, setIsAlertSettingsOpen] = useState(false);
   const [isRollCallOpen, setIsRollCallOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [dashboardView, setDashboardView] = useState<'table' | 'card'>('table');
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
@@ -380,23 +382,31 @@ export default function App() {
       'કેમ્પસ નાઈટ (PSI)',
       'VVIP બંદોબસ્ત (PSI)'
     ];
+
     const rows = roster.map(r => [
       `"${r.date}"`,
       `"${r.dayName}"`,
-      `"${r.communalPi}"`,
-      `"${r.divisionPi}"`,
-      `"${r.cmMorchoPsi}"`,
-      `"${r.campusPsi}"`,
-      `"${r.vvipPsi}"`
+      `"${formatDutyForExport(r.communalPi, officersMap, officers, 'PI શ્રી, સ્કોડ-૦૧').replace(/"/g, '""')}"`,
+      `"${formatDutyForExport(r.divisionPi, officersMap, officers, 'PI શ્રી, સ્કોડ-૦૮').replace(/"/g, '""')}"`,
+      `"${formatDutyForExport(r.cmMorchoPsi, officersMap, officers, 'સ્કોડ-૦૯').replace(/"/g, '""')}"`,
+      `"${formatDutyForExport(r.campusPsi, officersMap, officers, 'સ્કોડ-૦૧').replace(/"/g, '""')}"`,
+      `"${formatDutyForExport(r.vvipPsi, officersMap, officers, 'સ્કોડ-૦૬').replace(/"/g, '""')}"`
     ]);
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+
+    // UTF-8 BOM (\uFEFF) to guarantee Excel reads Gujarati text accurately
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Crime_Branch_1_to_30_Night_Duty_Roster.csv`;
+    const now = new Date();
+    const dateStr = `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}`;
+    link.download = `Crime_Branch_Duty_Roster_With_Officers_${dateStr}.csv`;
+    document.body.appendChild(link);
     link.click();
-    showToast('૧ થી ૩૦ ડ્યુટી પત્રક (Excel/CSV) ડાઉનલોડ થઈ ગયું!');
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(lang === 'gu' ? '૧ થી ૩૦ ડ્યુટી પત્રક (PI/PSI શ્રી ના નામ અને સ્કોડ સાથે) ડાઉનલોડ થઈ ગયું!' : '1 to 30 Duty Roster with Officer Names & Squads downloaded!');
   };
 
   const handleDownloadTemplate = () => {
@@ -415,23 +425,32 @@ export default function App() {
       const dateStr = `${d}/11/2026`;
       const dateObj = new Date(2026, 10, d);
       const dayName = dayNamesGu[dateObj.getDay()];
+      const communalSquad = `PI શ્રી, સ્કોડ-${((d - 1) % 10 + 1).toString().padStart(2, '0')}`;
+      const divisionSquad = `PI શ્રી, સ્કોડ-${((d + 6) % 10 + 1).toString().padStart(2, '0')}`;
+      const cmSquad = `સ્કોડ-${((d + 7) % 10 + 1).toString().padStart(2, '0')}`;
+      const campusSquad = `સ્કોડ-${((d - 1) % 10 + 1).toString().padStart(2, '0')}`;
+      const vvipSquad = `સ્કોડ-${((d + 4) % 10 + 1).toString().padStart(2, '0')}`;
+
       return [
         `"${dateStr}"`,
         `"${dayName}"`,
-        `"સ્કોડ - ${(d % 15 + 1).toString().padStart(2, '0')}"`,
-        `"સ્કોડ - ${((d + 5) % 15 + 1).toString().padStart(2, '0')}"`,
-        `"સ્કોડ - ${(d % 20 + 1).toString().padStart(2, '0')}"`,
-        `"સ્કોડ - ${((d + 3) % 20 + 1).toString().padStart(2, '0')}"`,
-        `"સ્કોડ - ${((d + 7) % 20 + 1).toString().padStart(2, '0')}"`
+        `"${formatDutyForExport(communalSquad, officersMap, officers).replace(/"/g, '""')}"`,
+        `"${formatDutyForExport(divisionSquad, officersMap, officers).replace(/"/g, '""')}"`,
+        `"${formatDutyForExport(cmSquad, officersMap, officers).replace(/"/g, '""')}"`,
+        `"${formatDutyForExport(campusSquad, officersMap, officers).replace(/"/g, '""')}"`,
+        `"${formatDutyForExport(vvipSquad, officersMap, officers).replace(/"/g, '""')}"`
       ];
     });
-    const csvContent = '\uFEFF' + [headers.join(','), ...templateRows.map(e => e.join(','))].join('\n');
+    const csvContent = '\uFEFF' + [headers.join(','), ...templateRows.map(e => e.join(','))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `Crime_Branch_1_to_30_Duty_Template.csv`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     showToast('૧ થી ૩૦ સેમ્પલ ટેમ્પલેટ (CSV) ડાઉનલોડ થઈ ગયું!');
   };
 
@@ -491,108 +510,167 @@ export default function App() {
                   )}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-3xl font-bold text-white tracking-tight">{lang === 'gu' ? 'આજની રાત્રિ ફરજ' : 'Dashboard'}</h2>
-                      <p className="text-slate-500 mt-1">{lang === 'gu' ? 'પોલીસ પેટ્રોલિંગ અને સુરક્ષા મોનિટરિંગ' : 'Police patrolling and security monitoring'}</p>
+                      <h2 className="text-3xl font-bold text-white tracking-tight">
+                        {dashboardView === 'table' 
+                          ? (lang === 'gu' ? '૧ થી ૩૦ દિવસ ડ્યુટી પત્રક (Table View)' : '1 to 30 Duty Roster (Table View)') 
+                          : (lang === 'gu' ? 'આજની રાત્રિ ફરજ' : 'Daily Duty Card')}
+                      </h2>
+                      <p className="text-slate-500 mt-1">
+                        {dashboardView === 'table'
+                          ? (lang === 'gu' ? 'સંપૂર્ણ મહિનાનું પોલીસ પેટ્રોલિંગ અને નાઈટ ડ્યુટી પત્રક' : 'Complete monthly night duty & security roster')
+                          : (lang === 'gu' ? 'પોલીસ પેટ્રોલિંગ અને સુરક્ષા મોનિટરિંગ' : 'Police patrolling and security monitoring')}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* View Switcher: Table View vs Card View */}
+                      <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 shadow-inner">
+                        <button
+                          type="button"
+                          onClick={() => setDashboardView('table')}
+                          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+                            dashboardView === 'table' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title={lang === 'gu' ? 'ટેબલ વ્યૂ (૧ થી ૩૦ પત્રક)' : 'Table View'}
+                        >
+                          <TableIcon size={16} />
+                          <span>{lang === 'gu' ? 'ટેબલ વ્યૂ' : 'Table View'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDashboardView('card')}
+                          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+                            dashboardView === 'card' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                          }`}
+                          title={lang === 'gu' ? 'આજની ડ્યુટી કાર્ડ વ્યૂ' : 'Card View'}
+                        >
+                          <LayoutDashboard size={16} />
+                          <span>{lang === 'gu' ? 'કાર્ડ વ્યૂ' : 'Card View'}</span>
+                        </button>
+                      </div>
+
                       <button onClick={handleExportCSV} className="bg-slate-900 hover:bg-slate-800 text-slate-300 px-4 py-2 rounded-xl border border-slate-800 text-sm font-semibold transition-all cursor-pointer flex items-center gap-2">
                         <Download size={16} />
-                        Export
+                        {lang === 'gu' ? 'ડાઉનલોડ પત્રક' : 'Export'}
                       </button>
                     </div>
                   </div>
 
-                  {/* Quick 1 to 30 Date Selector for Rapid Swapping & Viewing */}
-                  <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
-                    <div className="flex items-center justify-between text-xs font-bold px-1">
-                      <span className="text-slate-300 font-bold text-sm">
-                        {lang === 'gu' ? 'તારીખ પસંદ કરો' : 'Select Date'}
-                      </span>
-                      <span className="text-amber-400 font-mono bg-amber-950/60 px-2.5 py-0.5 rounded border border-amber-800/40">
-                        {lang === 'gu' ? 'પસંદ કરેલ તારીખ' : 'Active Date'}: {selectedDate}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                      {roster.map((r) => {
-                        const isSelected = r.date === selectedDate;
-                        const dayNum = r.date.split('/')[0];
-                        return (
-                          <button
-                            key={r.date}
-                            type="button"
-                            onClick={() => setSelectedDate(r.date)}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer flex flex-col items-center min-w-[56px] border ${
-                              isSelected
-                                ? 'bg-blue-600 text-white border-blue-400 shadow-lg scale-105 ring-2 ring-blue-500/30'
-                                : 'bg-slate-950 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700'
-                            }`}
-                          >
-                            <span className="text-base font-black leading-none">{dayNum}</span>
-                            <span className="text-[10px] font-bold opacity-80 mt-1">{r.dayName.slice(0, 3)}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <TodayDutyCard
-                    dutyRow={selectedDutyRow}
-                    officersMap={officersMap}
-                    officers={officers}
-                    onSendWhatsApp={handleOpenIndividualWhatsApp}
-                    onSwapDuty={(date, id) => setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: (selectedDutyRow as any)[id] })}
-                    onBroadcast={(type, row) => type === 'PI' ? handleOpenPiBroadcast(row) : handleOpenPsiBroadcast(row, roster.indexOf(row))}
-                    lang={lang}
-                  />
-
-                  {/* Summary Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Total PI Units', count: officers.filter(o => o.category === 'PI').length, color: 'blue' },
-                      { label: 'Total PSI Units', count: officers.filter(o => o.category === 'PSI').length, color: 'emerald' },
-                      { label: 'Roster Days', count: roster.length, color: 'amber' },
-                      { label: 'Night Shifts', count: roster.length * 5, color: 'rose' },
-                    ].map((stat) => (
-                      <div key={stat.label} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
-                        <p className={`text-3xl font-black text-${stat.color}-500`}>{stat.count}</p>
+                  {dashboardView === 'table' ? (
+                    <RosterTable
+                      roster={roster}
+                      officersMap={officersMap}
+                      officers={officers}
+                      currentDateStr={selectedDate}
+                      onSendWhatsApp={handleOpenIndividualWhatsApp}
+                      onPiBroadcast={handleOpenPiBroadcast}
+                      onPsiBroadcast={handleOpenPsiBroadcast}
+                      onSwapDuty={(date, id) => {
+                        const row = roster.find(r => r.date === date);
+                        setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: row ? (row as any)[id] : '' });
+                      }}
+                      onImportPaste={handleImportPaste}
+                      onExportRoster={handleExportCSV}
+                      onDownloadTemplate={handleDownloadTemplate}
+                      lang={lang}
+                    />
+                  ) : (
+                    <>
+                      {/* Quick 1 to 30 Date Selector for Rapid Swapping & Viewing */}
+                      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between text-xs font-bold px-1">
+                          <span className="text-slate-300 font-bold text-sm">
+                            {lang === 'gu' ? 'તારીખ પસંદ કરો' : 'Select Date'}
+                          </span>
+                          <span className="text-amber-400 font-mono bg-amber-950/60 px-2.5 py-0.5 rounded border border-amber-800/40">
+                            {lang === 'gu' ? 'પસંદ કરેલ તારીખ' : 'Active Date'}: {selectedDate}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                          {roster.map((r) => {
+                            const isSelected = r.date === selectedDate;
+                            const dayNum = r.date.split('/')[0];
+                            return (
+                              <button
+                                key={r.date}
+                                type="button"
+                                onClick={() => setSelectedDate(r.date)}
+                                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer flex flex-col items-center min-w-[56px] border ${
+                                  isSelected
+                                    ? 'bg-blue-600 text-white border-blue-400 shadow-lg scale-105 ring-2 ring-blue-500/30'
+                                    : 'bg-slate-950 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700'
+                                }`}
+                              >
+                                <span className="text-base font-black leading-none">{dayNum}</span>
+                                <span className="text-[10px] font-bold opacity-80 mt-1">{r.dayName.slice(0, 3)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ))}
-                  </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-bold text-lg text-white">Roster Overview</h3>
-                        <Link to="/roster" className="text-blue-500 text-sm font-bold hover:underline">View All</Link>
-                      </div>
-                      <div className="space-y-4">
-                        {roster.slice(0, 5).map(row => (
-                          <div key={row.date} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center font-bold text-xs text-slate-400 border border-slate-800">{row.date.split('/')[0]}</div>
-                              <div>
-                                <p className="text-sm font-bold text-white">{row.dayName}</p>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">{row.date}</p>
-                              </div>
-                            </div>
-                            <div className="flex -space-x-2">
-                              <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold" title="PI">PI</div>
-                              <div className="w-8 h-8 rounded-full bg-emerald-600 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold" title="PSI">PS</div>
-                            </div>
+                      <TodayDutyCard
+                        dutyRow={selectedDutyRow}
+                        officersMap={officersMap}
+                        officers={officers}
+                        onSendWhatsApp={handleOpenIndividualWhatsApp}
+                        onSwapDuty={(date, id) => setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: (selectedDutyRow as any)[id] })}
+                        onBroadcast={(type, row) => type === 'PI' ? handleOpenPiBroadcast(row) : handleOpenPsiBroadcast(row, roster.indexOf(row))}
+                        lang={lang}
+                      />
+
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: 'Total PI Units', count: officers.filter(o => o.category === 'PI').length, color: 'blue' },
+                          { label: 'Total PSI Units', count: officers.filter(o => o.category === 'PSI').length, color: 'emerald' },
+                          { label: 'Roster Days', count: roster.length, color: 'amber' },
+                          { label: 'Night Shifts', count: roster.length * 5, color: 'rose' },
+                        ].map((stat) => (
+                          <div key={stat.label} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                            <p className={`text-3xl font-black text-${stat.color}-500`}>{stat.count}</p>
                           </div>
                         ))}
                       </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
-                       <Shield className="absolute -right-8 -bottom-8 w-40 h-40 text-white/5 rotate-12" />
-                       <h3 className="text-xl font-bold mb-2">Security Notice</h3>
-                       <p className="text-blue-100 text-sm leading-relaxed mb-6">All night shift officers must report to the control room via VHF within 15 minutes of shift start.</p>
-                       <button onClick={() => setIsRollCallOpen(true)} className="w-full bg-white text-blue-600 py-3 rounded-xl font-bold text-sm shadow-lg shadow-black/20 hover:scale-[1.02] transition-all cursor-pointer">
-                         Conduct Roll-Call
-                       </button>
-                    </div>
-                  </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-lg text-white">Roster Overview</h3>
+                            <button onClick={() => setDashboardView('table')} className="text-blue-500 text-sm font-bold hover:underline cursor-pointer">
+                              {lang === 'gu' ? 'ટેબલ વ્યૂ ખોલો' : 'Open Table View'}
+                            </button>
+                          </div>
+                          <div className="space-y-4">
+                            {roster.slice(0, 5).map(row => (
+                              <div key={row.date} className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center font-bold text-xs text-slate-400 border border-slate-800">{row.date.split('/')[0]}</div>
+                                  <div>
+                                    <p className="text-sm font-bold text-white">{row.dayName}</p>
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">{row.date}</p>
+                                  </div>
+                                </div>
+                                <div className="flex -space-x-2">
+                                  <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold" title="PI">PI</div>
+                                  <div className="w-8 h-8 rounded-full bg-emerald-600 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold" title="PSI">PS</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden">
+                           <Shield className="absolute -right-8 -bottom-8 w-40 h-40 text-white/5 rotate-12" />
+                           <h3 className="text-xl font-bold mb-2">Security Notice</h3>
+                           <p className="text-blue-100 text-sm leading-relaxed mb-6">All night shift officers must report to the control room via VHF within 15 minutes of shift start.</p>
+                           <button onClick={() => setIsRollCallOpen(true)} className="w-full bg-white text-blue-600 py-3 rounded-xl font-bold text-sm shadow-lg shadow-black/20 hover:scale-[1.02] transition-all cursor-pointer">
+                             Conduct Roll-Call
+                           </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               } />
               
@@ -653,7 +731,13 @@ export default function App() {
           </div>
         )}
       </div>
-      <PrintRosterView roster={roster} monthNameGu="નવેમ્બર" year={2026} />
+      <PrintRosterView 
+        roster={roster} 
+        officersMap={officersMap} 
+        officers={officers} 
+        monthNameGu="નવેમ્બર" 
+        year={2026} 
+      />
     </BrowserRouter>
   );
 }

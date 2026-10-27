@@ -1,17 +1,32 @@
 import React from 'react';
-import { DutyRow } from '../types/roster';
+import { DutyRow, Officer } from '../types/roster';
+import { resolveOfficerAndSquad } from '../utils/whatsapp';
 
 interface PrintRosterViewProps {
   roster: DutyRow[];
+  officersMap?: Record<string, Officer>;
+  officers?: Officer[];
   monthNameGu: string;
   year: number;
 }
 
 export const PrintRosterView: React.FC<PrintRosterViewProps> = ({
   roster,
+  officersMap = {},
+  officers = [],
   monthNameGu,
   year,
 }) => {
+  const renderPrintCell = (val: string, fallback?: string) => {
+    const resolved = resolveOfficerAndSquad(val, officersMap, officers, fallback);
+    return (
+      <div className="leading-tight py-0.5">
+        <div className="font-bold text-[10px]">{resolved.name}</div>
+        <div className="text-[9px] text-slate-700 font-mono">({resolved.squadFormatted})</div>
+      </div>
+    );
+  };
+
   return (
     <div className="hidden print:block p-4 bg-white text-black text-xs font-serif leading-tight">
       {/* Official Police Order Header */}
@@ -43,13 +58,13 @@ export const PrintRosterView: React.FC<PrintRosterViewProps> = ({
         <tbody>
           {roster.map((row) => (
             <tr key={row.date} className="border-b border-black">
-              <td className="border border-black p-1 font-mono">{row.date}</td>
+              <td className="border border-black p-1 font-mono font-bold">{row.date}</td>
               <td className="border border-black p-1">{row.dayName}</td>
-              <td className="border border-black p-1 font-medium">{row.communalPi}</td>
-              <td className="border border-black p-1 font-medium">{row.divisionPi}</td>
-              <td className="border border-black p-1">{row.cmMorchoPsi}</td>
-              <td className="border border-black p-1">{row.campusPsi}</td>
-              <td className="border border-black p-1">{row.vvipPsi}</td>
+              <td className="border border-black p-1">{renderPrintCell(row.communalPi, 'PI શ્રી, સ્કોડ-૦૧')}</td>
+              <td className="border border-black p-1">{renderPrintCell(row.divisionPi, 'PI શ્રી, સ્કોડ-૦૮')}</td>
+              <td className="border border-black p-1">{renderPrintCell(row.cmMorchoPsi, 'સ્કોડ-૦૯')}</td>
+              <td className="border border-black p-1">{renderPrintCell(row.campusPsi, 'સ્કોડ-૦૧')}</td>
+              <td className="border border-black p-1">{renderPrintCell(row.vvipPsi, 'સ્કોડ-૦૬')}</td>
             </tr>
           ))}
         </tbody>
