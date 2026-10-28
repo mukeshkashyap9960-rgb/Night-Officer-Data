@@ -65,14 +65,6 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
       color: 'emerald',
       icon: MapPin
     },
-    {
-      key: 'vvipPsi',
-      titleGu: 'VVIP બંદોબસ્ત (PSI)',
-      role: 'PSI',
-      squad: dutyRow.vvipPsi,
-      color: 'rose',
-      icon: Shield
-    },
   ];
 
   return (
@@ -105,7 +97,7 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {dutyItems.map((item) => {
           const officer = officersMap[item.squad] || officers.find(o => o.name === item.squad || o.squad === item.squad || o.id === item.squad);
           const formattedSquad = formatSquadText(officer?.squad || item.squad) || officer?.squad || item.squad;

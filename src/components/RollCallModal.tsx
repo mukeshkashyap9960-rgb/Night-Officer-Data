@@ -52,7 +52,6 @@ export const RollCallModal: React.FC<RollCallModalProps> = ({
     { key: 'divisionPi', labelGu: 'ડીવીઝન નાઈટ (PI)', squad: dutyRow.divisionPi },
     { key: 'cmMorchoPsi', labelGu: 'CM મોરચો (PSI)', squad: dutyRow.cmMorchoPsi },
     { key: 'campusPsi', labelGu: 'કેમ્પસ નાઈટ (PSI)', squad: dutyRow.campusPsi },
-    { key: 'vvipPsi', labelGu: 'VVIP બંદોબસ્ત (PSI)', squad: dutyRow.vvipPsi },
   ];
 
   const handleStatusChange = (postKey: string, status: 'present' | 'absent' | 'leave') => {

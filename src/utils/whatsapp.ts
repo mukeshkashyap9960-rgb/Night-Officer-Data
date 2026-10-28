@@ -340,10 +340,7 @@ export function createPsiBroadcastMessage(params: {
 ━━━━━━━━━━━━━━━━━━━━
 ${getOffDetails(row.cmMorchoPsi, 'CM મોરચો PSI શ્રી', 'સ્કોડ-૦૯')}
 
-${getOffDetails(row.campusPsi, 'કેમ્પસ નાઈટ PSI શ્રી', 'સ્કોડ-૦૧')}
-
-${getOffDetails(row.vvipPsi, 'VVIP બંદોબસ્ત PSI શ્રી', 'સ્કોડ-૦૬')}
-${nextCmDetails ? `\n📌 *આગામી તારીખ મોરચો*\n${nextCmDetails}` : ''}
+${getOffDetails(row.campusPsi, 'કેમ્પસ નાઈટ PSI શ્રી', 'સ્કોડ-૦૧')}${nextCmDetails ? `\n\n📌 *આગામી તારીખ મોરચો*\n${nextCmDetails}` : ''}
 ━━━━━━━━━━━━━━━━━━━━
 જય હિન્દ! 🇮🇳`;
 }

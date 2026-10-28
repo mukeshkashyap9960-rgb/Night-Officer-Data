@@ -52,7 +52,6 @@ export const PrintRosterView: React.FC<PrintRosterViewProps> = ({
             <th className="border border-black p-1.5">ડીવીઝન નાઈટ (PI)</th>
             <th className="border border-black p-1.5">CM મોરચો (PSI)</th>
             <th className="border border-black p-1.5">કેમ્પસ નાઈટ (PSI)</th>
-            <th className="border border-black p-1.5">VVIP બંદોબસ્ત (PSI)</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +63,6 @@ export const PrintRosterView: React.FC<PrintRosterViewProps> = ({
               <td className="border border-black p-1">{renderPrintCell(row.divisionPi, 'PI શ્રી, સ્કોડ-૦૮')}</td>
               <td className="border border-black p-1">{renderPrintCell(row.cmMorchoPsi, 'સ્કોડ-૦૯')}</td>
               <td className="border border-black p-1">{renderPrintCell(row.campusPsi, 'સ્કોડ-૦૧')}</td>
-              <td className="border border-black p-1">{renderPrintCell(row.vvipPsi, 'સ્કોડ-૦૬')}</td>
             </tr>
           ))}
         </tbody>

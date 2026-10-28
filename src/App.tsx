@@ -288,7 +288,7 @@ export default function App() {
         if (isHeader) continue;
       }
 
-      if (cols.length >= 7) {
+      if (cols.length >= 6) {
         newRows.push({
           date: cols[0],
           dayName: cols[1],
@@ -297,7 +297,7 @@ export default function App() {
           divisionPi: cols[3],
           cmMorchoPsi: cols[4],
           campusPsi: cols[5],
-          vvipPsi: cols[6],
+          vvipPsi: cols[6] || '',
         });
       }
     }
@@ -382,7 +382,7 @@ export default function App() {
       headers.push('કોમ્યુનલ નાઈટ (PI)', 'ડીવીઝન નાઈટ (PI)');
     }
     if (filterType === 'all' || filterType === 'psi') {
-      headers.push('CM મોરચો (PSI)', 'કેમ્પસ નાઈટ (PSI)', 'VVIP બંદોબસ્ત (PSI)');
+      headers.push('CM મોરચો (PSI)', 'કેમ્પસ નાઈટ (PSI)');
     }
 
     const rows = exportData.map(r => {
@@ -396,8 +396,7 @@ export default function App() {
       if (filterType === 'all' || filterType === 'psi') {
         row.push(
           `"${formatDutyForExport(r.cmMorchoPsi, officersMap, officers, 'સ્કોડ-૦૯').replace(/"/g, '""')}"`,
-          `"${formatDutyForExport(r.campusPsi, officersMap, officers, 'સ્કોડ-૦૧').replace(/"/g, '""')}"`,
-          `"${formatDutyForExport(r.vvipPsi, officersMap, officers, 'સ્કોડ-૦૬').replace(/"/g, '""')}"`
+          `"${formatDutyForExport(r.campusPsi, officersMap, officers, 'સ્કોડ-૦૧').replace(/"/g, '""')}"`
         );
       }
       return row;
@@ -426,8 +425,7 @@ export default function App() {
       'કોમ્યુનલ નાઈટ (PI)',
       'ડીવીઝન નાઈટ (PI)',
       'CM મોરચો (PSI)',
-      'કેમ્પસ નાઈટ (PSI)',
-      'VVIP બંદોબસ્ત (PSI)'
+      'કેમ્પસ નાઈટ (PSI)'
     ];
     const dayNamesGu = ['રવિવાર', 'સોમવાર', 'મંગળવાર', 'બુધવાર', 'ગુરુવાર', 'શુક્રવાર', 'શનિવાર'];
     const templateRows = Array.from({ length: 30 }, (_, i) => {
@@ -439,7 +437,6 @@ export default function App() {
       const divisionSquad = `PI શ્રી, સ્કોડ-${((d + 6) % 10 + 1).toString().padStart(2, '0')}`;
       const cmSquad = `સ્કોડ-${((d + 7) % 10 + 1).toString().padStart(2, '0')}`;
       const campusSquad = `સ્કોડ-${((d - 1) % 10 + 1).toString().padStart(2, '0')}`;
-      const vvipSquad = `સ્કોડ-${((d + 4) % 10 + 1).toString().padStart(2, '0')}`;
 
       return [
         `"${dateStr}"`,
@@ -447,8 +444,7 @@ export default function App() {
         `"${formatDutyForExport(communalSquad, officersMap, officers).replace(/"/g, '""')}"`,
         `"${formatDutyForExport(divisionSquad, officersMap, officers).replace(/"/g, '""')}"`,
         `"${formatDutyForExport(cmSquad, officersMap, officers).replace(/"/g, '""')}"`,
-        `"${formatDutyForExport(campusSquad, officersMap, officers).replace(/"/g, '""')}"`,
-        `"${formatDutyForExport(vvipSquad, officersMap, officers).replace(/"/g, '""')}"`
+        `"${formatDutyForExport(campusSquad, officersMap, officers).replace(/"/g, '""')}"`
       ];
     });
     const csvContent = '\uFEFF' + [headers.join(','), ...templateRows.map(e => e.join(','))].join('\r\n');
@@ -677,7 +673,7 @@ export default function App() {
                           { label: 'Total PI Units', count: officers.filter(o => o.category === 'PI').length, color: 'blue' },
                           { label: 'Total PSI Units', count: officers.filter(o => o.category === 'PSI').length, color: 'emerald' },
                           { label: 'Roster Days', count: roster.length, color: 'amber' },
-                          { label: 'Night Shifts', count: roster.length * 5, color: 'rose' },
+                          { label: 'Night Shifts', count: roster.length * 4, color: 'rose' },
                         ].map((stat) => (
                           <div key={stat.label} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
@@ -742,9 +738,6 @@ export default function App() {
                                 <th className="py-4 px-3 text-xs font-black text-emerald-400 uppercase tracking-wider border-l border-slate-800/50">
                                   {lang === 'gu' ? 'કેમ્પસ (PSI)' : 'Campus (PSI)'}
                                 </th>
-                                <th className="py-4 px-3 text-xs font-black text-rose-400 uppercase tracking-wider border-l border-slate-800/50">
-                                  {lang === 'gu' ? 'VVIP (PSI)' : 'VVIP (PSI)'}
-                                </th>
                                 <th className="py-4 px-3 text-center text-xs font-black text-slate-300 uppercase tracking-wider border-l border-slate-800/50 w-28">
                                   {lang === 'gu' ? 'પત્રક / SMS' : 'Broadcast'}
                                 </th>
@@ -775,9 +768,6 @@ export default function App() {
                                     </td>
                                     <td className="py-2.5 px-2.5 border-l border-slate-800/30">
                                       {renderOverviewCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}
-                                    </td>
-                                    <td className="py-2.5 px-2.5 border-l border-slate-800/30">
-                                      {renderOverviewCell(row.vvipPsi, 'vvipPsi', 'VVIP બંદોબસ્ત', row)}
                                     </td>
                                     <td className="py-2.5 px-2.5 text-center border-l border-slate-800/30">
                                       <div className="flex flex-col gap-1 items-center justify-center">

@@ -55,7 +55,6 @@ export const DutyAnalyticsModal: React.FC<DutyAnalyticsModalProps> = ({
   const psiStats = PSI_UNITS.map((unit) => {
     let cmCount = 0;
     let campusCount = 0;
-    let vvipCount = 0;
     let weekendCount = 0;
 
     roster.forEach((row) => {
@@ -68,13 +67,9 @@ export const DutyAnalyticsModal: React.FC<DutyAnalyticsModalProps> = ({
         campusCount++;
         if (isWeekend) weekendCount++;
       }
-      if (row.vvipPsi === unit) {
-        vvipCount++;
-        if (isWeekend) weekendCount++;
-      }
     });
 
-    const total = cmCount + campusCount + vvipCount;
+    const total = cmCount + campusCount;
     const officer = officersMap[unit];
 
     return {
@@ -82,7 +77,6 @@ export const DutyAnalyticsModal: React.FC<DutyAnalyticsModalProps> = ({
       name: officer ? officer.name : '',
       cmCount,
       campusCount,
-      vvipCount,
       weekendCount,
       total,
     };
@@ -130,12 +124,12 @@ export const DutyAnalyticsModal: React.FC<DutyAnalyticsModalProps> = ({
             </div>
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-900/40">
               <span className="text-emerald-800 dark:text-emerald-300 font-semibold block mb-0.5">કુલ PSI ફરજો</span>
-              <span className="text-lg font-bold text-emerald-900 dark:text-white">૯૦ શિફ્ટ્સ</span>
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block mt-0.5">સરેરાશ ૯ પ્રતિ PSI</span>
+              <span className="text-lg font-bold text-emerald-900 dark:text-white">૬૦ શિફ્ટ્સ</span>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block mt-0.5">સરેરાશ ૬ પ્રતિ PSI</span>
             </div>
             <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900/40">
               <span className="text-amber-800 dark:text-amber-300 font-semibold block mb-0.5">વીકેન્ડ શિફ્ટ્સ (શનિ-રવિ)</span>
-              <span className="text-lg font-bold text-amber-900 dark:text-white">૪૫ શિફ્ટ્સ</span>
+              <span className="text-lg font-bold text-amber-900 dark:text-white">૩૬ શિફ્ટ્સ</span>
               <span className="text-[10px] text-amber-700 dark:text-amber-400 block mt-0.5">૯ વીકેન્ડ દિવસો</span>
             </div>
             <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-900/40">
@@ -193,7 +187,6 @@ export const DutyAnalyticsModal: React.FC<DutyAnalyticsModalProps> = ({
                     <th className="p-2.5">અધિકારી</th>
                     <th className="p-2.5 text-center">CM મોરચો</th>
                     <th className="p-2.5 text-center">કેમ્પસ</th>
-                    <th className="p-2.5 text-center">VVIP</th>
                     <th className="p-2.5 text-center">શનિ/રવિ</th>
                     <th className="p-2.5 text-center font-bold">કુલ ડ્યુટી</th>
                   </tr>
@@ -205,7 +198,6 @@ export const DutyAnalyticsModal: React.FC<DutyAnalyticsModalProps> = ({
                       <td className="p-2.5 text-slate-600 dark:text-slate-400">{item.name || '-'}</td>
                       <td className="p-2.5 text-center text-amber-700 dark:text-amber-400">{item.cmCount}</td>
                       <td className="p-2.5 text-center text-emerald-700 dark:text-emerald-400">{item.campusCount}</td>
-                      <td className="p-2.5 text-center text-rose-700 dark:text-rose-400">{item.vvipCount}</td>
                       <td className="p-2.5 text-center text-amber-600">{item.weekendCount}</td>
                       <td className="p-2.5 text-center font-bold text-slate-900 dark:text-white">{item.total}</td>
                     </tr>

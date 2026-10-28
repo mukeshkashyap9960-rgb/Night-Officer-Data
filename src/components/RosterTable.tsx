@@ -323,9 +323,6 @@ export const RosterTable: React.FC<RosterTableProps> = ({
                 <th className="py-6 px-3 text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-wider border-l border-slate-800/50">
                   {lang === 'gu' ? 'કેમ્પસ (PSI)' : 'Campus (PSI)'}
                 </th>
-                <th className="py-6 px-3 text-xs sm:text-sm font-black text-rose-400 uppercase tracking-wider border-l border-slate-800/50">
-                  {lang === 'gu' ? 'VVIP (PSI)' : 'VVIP (PSI)'}
-                </th>
                 <th className="py-6 px-6 text-center text-xs sm:text-sm font-black text-slate-300 uppercase tracking-wider border-l border-slate-800/50">
                   {lang === 'gu' ? 'પત્રક / Actions' : 'Actions'}
                 </th>
@@ -347,7 +344,6 @@ export const RosterTable: React.FC<RosterTableProps> = ({
                   <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.divisionPi, 'divisionPi', 'ડીવીઝન નાઈટ', row)}</td>
                   <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.cmMorchoPsi, 'cmMorchoPsi', 'CM મોરચો', row)}</td>
                   <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}</td>
-                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.vvipPsi, 'vvipPsi', 'VVIP બંદોબસ્ત', row)}</td>
                   <td className="py-10 px-10 text-right border-l border-slate-800/30">
                     <div className="flex flex-col items-end gap-2">
                       <button 
@@ -481,7 +477,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({
                 </div>
                 <textarea
                   className="w-full h-44 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all font-mono text-xs leading-relaxed"
-                  placeholder="તારીખ, વાર, કોમ્યુનલ (PI), ડીવીઝન (PI), CM મોરચો (PSI), કેમ્પસ (PSI), VVIP (PSI)&#10;1/11/2026	રવિવાર	સ્કોડ - ૦૪	સ્કોડ - ૦૫	સ્કોડ - ૦૯	સ્કોડ - ૦૧	સ્કોડ - ૦૬"
+                  placeholder="તારીખ, વાર, કોમ્યુનલ (PI), ડીવીઝન (PI), CM મોરચો (PSI), કેમ્પસ (PSI)&#10;1/11/2026	રવિવાર	સ્કોડ - ૦૪	સ્કોડ - ૦૫	સ્કોડ - ૦૯	સ્કોડ - ૦૧"
                   value={pastedData}
                   onChange={(e) => setPastedData(e.target.value)}
                 />
@@ -489,7 +485,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({
 
               {/* Instructions format note */}
               <div className="text-[11px] text-slate-400 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
-                <span className="font-bold text-amber-400">💡 કોલમ ફોર્મેટ:</span> તારીખ | વાર | કોમ્યુનલ નાઈટ PI | ડીવીઝન નાઈટ PI | CM મોરચો PSI | કેમ્પસ નાઈટ PSI | VVIP બંદોબસ્ત PSI.
+                <span className="font-bold text-amber-400">💡 કોલમ ફોર્મેટ:</span> તારીખ | વાર | કોમ્યુનલ નાઈટ PI | ડીવીઝન નાઈટ PI | CM મોરચો PSI | કેમ્પસ નાઈટ PSI.
               </div>
             </div>
 
