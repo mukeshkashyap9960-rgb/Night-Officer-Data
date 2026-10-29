@@ -169,7 +169,10 @@ export default function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
+    const todayStr = `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
+    const initialRoster = loadRosterFromLocal() || NOVEMBER_2026_ROSTER;
+    const match = initialRoster.find(r => r.date === todayStr);
+    return match ? match.date : (initialRoster[0]?.date || '1/11/2026');
   });
 
   const [whatsAppModal, setWhatsAppModal] = useState({ isOpen: false, title: '', recipientName: '', recipientPhone: '', message: '' });
@@ -240,6 +243,7 @@ export default function App() {
   const handleOpenIndividualWhatsApp = (squad: string, dutyTypeKey: string, dutyTitleGu: string, dateParam?: string, dayParam?: string) => {
     const date = dateParam || selectedDutyRow.date;
     const day = dayParam || selectedDutyRow.dayName;
+    const dutyRowForDate = roster.find(r => r.date === date) || selectedDutyRow;
     const officer = officersMap[squad] || officers.find(o => o.name === squad || o.squad === squad || o.id === squad) || null;
 
     const message = createIndividualDutyMessage({ 
@@ -248,6 +252,7 @@ export default function App() {
       dutyTitleGu, 
       date, 
       dayName: day,
+      divisionArea: dutyRowForDate?.divisionArea,
       officersMap,
       officersList: officers 
     });
@@ -372,6 +377,34 @@ export default function App() {
 
     if (alertConfig.soundEnabled) alertSound.playSoftBeep();
     showToast(`તારીખ ${date} માટે ડ્યુટી સફળતાપૂર્વક બદલાઈ ગઈ.`);
+  };
+
+  const handleUpdateDivisionArea = async (date: string, area: string) => {
+    const updatedRoster = roster.map(row => row.date === date ? { ...row, divisionArea: area } : row);
+    setRoster(updatedRoster);
+    saveRosterToLocal(updatedRoster);
+
+    const targetRow = updatedRoster.find(r => r.date === date);
+    if (targetRow && supabase) {
+      try {
+        await supabase.from(TABLES.ROSTER).upsert([
+          {
+            date: targetRow.date,
+            day_name: targetRow.dayName,
+            communal_pi: targetRow.communalPi,
+            division_pi: targetRow.divisionPi,
+            cm_morcho_psi: targetRow.cmMorchoPsi,
+            campus_psi: targetRow.campusPsi,
+            vvip_psi: targetRow.vvipPsi,
+            division_area: targetRow.divisionArea || null,
+          }
+        ], { onConflict: 'date' });
+      } catch (err) {
+        console.error('Supabase division area error:', err);
+      }
+    }
+
+    showToast(lang === 'gu' ? `તારીખ ${date} માટે ડીવીજન વિસ્તાર અપડેટ થઈ ગયો.` : `Division area updated for ${date}.`);
   };
 
   const handleExportCSV = (data?: DutyRow[], filterType: 'all' | 'pi' | 'psi' = 'all') => {
@@ -663,6 +696,7 @@ export default function App() {
                         officers={officers}
                         onSendWhatsApp={handleOpenIndividualWhatsApp}
                         onSwapDuty={(date, id) => setSwapModal({ isOpen: true, date, dutyColumnId: id, currentSquad: (selectedDutyRow as any)[id] })}
+                        onUpdateDivisionArea={handleUpdateDivisionArea}
                         onBroadcast={(type, row) => type === 'PI' ? handleOpenPiBroadcast(row) : handleOpenPsiBroadcast(row, roster.indexOf(row))}
                         lang={lang}
                       />

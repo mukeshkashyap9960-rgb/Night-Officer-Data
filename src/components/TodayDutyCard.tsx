@@ -19,6 +19,7 @@ interface TodayDutyCardProps {
   officers?: Officer[];
   onSendWhatsApp: (squad: string, dutyType: string, dutyTitleGu: string) => void;
   onSwapDuty: (date: string, dutyColumnId: string) => void;
+  onUpdateDivisionArea?: (date: string, area: string) => void;
   onBroadcast: (type: 'PI' | 'PSI', dutyRow: DutyRow) => void;
   lang: 'gu' | 'en';
 }
@@ -29,6 +30,7 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
   officers = [],
   onSendWhatsApp,
   onSwapDuty,
+  onUpdateDivisionArea,
   onBroadcast,
   lang,
 }) => {
@@ -124,6 +126,33 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
                   {officer ? officer.name : item.squad}
                 </div>
                 
+                {item.key === 'divisionPi' && (
+                  <div className="mb-4 p-2.5 bg-indigo-950/40 border border-indigo-800/40 rounded-xl" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between text-xs font-bold text-indigo-300 mb-1">
+                      <span className="flex items-center gap-1">
+                        <MapPin size={13} />
+                        {lang === 'gu' ? 'ડીવીજન વિસ્તાર:' : 'Division Area:'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = dutyRow.divisionArea || '';
+                          const newArea = prompt(lang === 'gu' ? 'ડીવીજન વિસ્તાર દાખલ કરો (દા.ત. એ-ડીવીઝન / સેક્ટર-૨):' : 'Enter Division Area (e.g. A-Division / Sector 2):', current);
+                          if (newArea !== null && onUpdateDivisionArea) {
+                            onUpdateDivisionArea(dutyRow.date, newArea);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-black cursor-pointer shadow-xs"
+                      >
+                        {dutyRow.divisionArea ? (lang === 'gu' ? 'બદલો' : 'Edit') : (lang === 'gu' ? '+ વિસ્તાર ઉમેરો' : '+ Add Area')}
+                      </button>
+                    </div>
+                    <p className="text-white font-bold text-xs truncate">
+                      {dutyRow.divisionArea || (lang === 'gu' ? 'વિસ્તાર નિર્ધારિત નથી (બદલો ક્લિક કરો)' : 'No area assigned (Click Edit)')}
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-1.5 mb-6">
                   <p className="text-xs text-amber-300 font-mono font-bold flex items-center gap-1.5">
                     <span className="bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/30">

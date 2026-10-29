@@ -229,10 +229,11 @@ export function createIndividualDutyMessage(params: {
   dutyTitleGu: string;
   date: string;
   dayName: string;
+  divisionArea?: string;
   officersMap?: Record<string, Officer>;
   officersList?: Officer[];
 }): string {
-  const { officer, squadText, dutyTitleGu, date, dayName, officersMap = {}, officersList = [] } = params;
+  const { officer, squadText, dutyTitleGu, date, dayName, divisionArea = '', officersMap = {}, officersList = [] } = params;
 
   const resolved = resolveOfficerAndSquad(
     officer ? (officer.name || officer.squad) : squadText,
@@ -245,6 +246,7 @@ export function createIndividualDutyMessage(params: {
   const officerRank = resolved.rank || (officer?.category === 'PSI' ? 'PSI' : 'PI');
   const phone = officer?.phone || resolved.phone || 'ઉપલબ્ધ નથી';
   const squadFormatted = resolved.squadFormatted || formatSquadText(squadText);
+  const areaLine = (dutyTitleGu.includes('ડીવીઝન') && divisionArea) ? `🗺️ ડીવીજન વિસ્તાર: ${divisionArea}\n` : '';
 
   if (dutyTitleGu.includes('CM મોરચો') || dutyTitleGu.includes('કેમ્પસ') || dutyTitleGu.includes('VVIP')) {
     const cleanTitle = dutyTitleGu.replace(/\s*\(PSI\)/g, '').trim();
@@ -263,8 +265,8 @@ export function createIndividualDutyMessage(params: {
       સ્કોડ : ${squadFormatted}
 👮 નામ: ${officerName}
 🏷️ હોદ્દો: ${officerRank}
-🛡️ નાઈટ નો પ્રકાર: ${dutyTitleGu}
-📞 મોબાઇલ નંબર: ${phone}
+🛡️ નાઈਟ નો પ્રકાર: ${dutyTitleGu}
+${areaLine}📞 મોબાઇલ નંબર: ${phone}
 જય હિન્દ! 🇮🇳`;
 }
 

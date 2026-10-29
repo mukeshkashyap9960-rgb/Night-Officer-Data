@@ -14,6 +14,7 @@ export interface DutyRow {
   cmMorchoPsi: string; // "સ્કોડ-૦૯"
   campusPsi: string; // "સ્કોડ-૦૧"
   vvipPsi: string; // "સ્કોડ-૦૬"
+  divisionArea?: string; // "ડીવીજન વિસ્તાર e.g. એ-ડીવીઝન પોલીસ સ્ટેશન વિસ્તાર"
   notes?: string;
   attendance?: {
     communalPi?: 'present' | 'absent' | 'leave';
