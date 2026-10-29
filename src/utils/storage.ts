@@ -200,6 +200,7 @@ export async function fetchAndSyncRoster(): Promise<DutyRow[]> {
           cmMorchoPsi: r.cm_morcho_psi || r.cmMorchoPsi || '',
           campusPsi: r.campus_psi || r.campusPsi || '',
           vvipPsi: r.vvip_psi || r.vvipPsi || '',
+          divisionArea: r.division_area || r.divisionArea || '',
         }));
         saveRosterToLocal(normalized);
         return normalized;

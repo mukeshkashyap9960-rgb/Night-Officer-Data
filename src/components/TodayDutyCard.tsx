@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Phone, 
   MessageSquare, 
@@ -8,7 +8,9 @@ import {
   AlertTriangle,
   Send,
   Shield,
-  MapPin
+  MapPin,
+  Check,
+  X
 } from 'lucide-react';
 import { DutyRow, Officer } from '../types/roster';
 import { formatSquadText } from '../utils/whatsapp';
@@ -34,6 +36,23 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
   onBroadcast,
   lang,
 }) => {
+  const [isEditingArea, setIsEditingArea] = useState(false);
+  const [areaInput, setAreaInput] = useState(dutyRow.divisionArea || '');
+
+  useEffect(() => {
+    setAreaInput(dutyRow.divisionArea || '');
+    setIsEditingArea(false);
+  }, [dutyRow.date, dutyRow.divisionArea]);
+
+  const handleSaveArea = (valToSave?: string) => {
+    const finalVal = (valToSave !== undefined ? valToSave : areaInput).trim();
+    if (onUpdateDivisionArea) {
+      onUpdateDivisionArea(dutyRow.date, finalVal);
+    }
+    setAreaInput(finalVal);
+    setIsEditingArea(false);
+  };
+
   const dutyItems = [
     {
       key: 'communalPi',
@@ -127,29 +146,134 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
                 </div>
                 
                 {item.key === 'divisionPi' && (
-                  <div className="mb-4 p-2.5 bg-indigo-950/40 border border-indigo-800/40 rounded-xl" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between text-xs font-bold text-indigo-300 mb-1">
-                      <span className="flex items-center gap-1">
-                        <MapPin size={13} />
-                        {lang === 'gu' ? 'ડીવીજન વિસ્તાર:' : 'Division Area:'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = dutyRow.divisionArea || '';
-                          const newArea = prompt(lang === 'gu' ? 'ડીવીજન વિસ્તાર દાખલ કરો (દા.ત. એ-ડીવીઝન / સેક્ટર-૨):' : 'Enter Division Area (e.g. A-Division / Sector 2):', current);
-                          if (newArea !== null && onUpdateDivisionArea) {
-                            onUpdateDivisionArea(dutyRow.date, newArea);
-                          }
-                        }}
-                        className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-black cursor-pointer shadow-xs"
-                      >
-                        {dutyRow.divisionArea ? (lang === 'gu' ? 'બદલો' : 'Edit') : (lang === 'gu' ? '+ વિસ્તાર ઉમેરો' : '+ Add Area')}
-                      </button>
-                    </div>
-                    <p className="text-white font-bold text-xs truncate">
-                      {dutyRow.divisionArea || (lang === 'gu' ? 'વિસ્તાર નિર્ધારિત નથી (બદલો ક્લિક કરો)' : 'No area assigned (Click Edit)')}
-                    </p>
+                  <div 
+                    className="mb-4 p-3 bg-indigo-950/60 border border-indigo-700/50 rounded-xl transition-all"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {isEditingArea ? (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-xs font-bold text-indigo-300">
+                          <span className="flex items-center gap-1.5">
+                            <MapPin size={14} className="text-indigo-400" />
+                            {lang === 'gu' ? 'ડીવીજન વિસ્તાર પસંદ / લખો:' : 'Division Area:'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingArea(false)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                            title={lang === 'gu' ? 'બંધ કરો' : 'Close'}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={areaInput}
+                            onChange={(e) => setAreaInput(e.target.value)}
+                            placeholder={lang === 'gu' ? 'દા.ત. એ-ડીવીઝન, સેક્ટર-૨...' : 'e.g. A-Division, Sector-2...'}
+                            className="w-full bg-slate-900 border border-indigo-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-bold"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveArea();
+                              if (e.key === 'Escape') setIsEditingArea(false);
+                            }}
+                          />
+                        </div>
+
+                        {/* Quick Selection Chips */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {['એ-ડીવીઝન', 'બી-ડીવીઝન', 'સી-ડીવીઝન', 'ડી-ડીવીઝન', 'સેક્ટર-૧', 'સેક્ટર-૨'].map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => {
+                                setAreaInput(chip);
+                                handleSaveArea(chip);
+                              }}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                                areaInput === chip
+                                  ? 'bg-indigo-600 text-white border-indigo-400 shadow-xs'
+                                  : 'bg-indigo-950 hover:bg-indigo-800 text-indigo-200 border-indigo-800/60'
+                              }`}
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveArea()}
+                            className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-black transition-all cursor-pointer shadow-md flex items-center justify-center gap-1 hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            <Check size={13} className="stroke-[3]" />
+                            <span>{lang === 'gu' ? 'સેવ કરો' : 'Save'}</span>
+                          </button>
+                          {dutyRow.divisionArea && (
+                            <button
+                              type="button"
+                              onClick={() => handleSaveArea('')}
+                              className="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 rounded-lg text-xs font-bold border border-rose-800/50 cursor-pointer transition-colors"
+                              title={lang === 'gu' ? 'વિસ્તાર કાઢી નાખો' : 'Remove area'}
+                            >
+                              {lang === 'gu' ? 'કાઢી નાખો' : 'Clear'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAreaInput(dutyRow.divisionArea || '');
+                              setIsEditingArea(false);
+                            }}
+                            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          >
+                            {lang === 'gu' ? 'રદ' : 'Cancel'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-bold text-indigo-300 mb-1.5">
+                          <span className="flex items-center gap-1">
+                            <MapPin size={13} className="text-indigo-400" />
+                            {lang === 'gu' ? 'ડીવીજન વિસ્તાર:' : 'Division Area:'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAreaInput(dutyRow.divisionArea || '');
+                              setIsEditingArea(true);
+                            }}
+                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-black cursor-pointer shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-1"
+                          >
+                            <span>{dutyRow.divisionArea ? (lang === 'gu' ? 'બદલો' : 'Edit') : (lang === 'gu' ? '+ વિસ્તાર ઉમેરો' : '+ Add Area')}</span>
+                          </button>
+                        </div>
+                        <div 
+                          onClick={() => {
+                            setAreaInput(dutyRow.divisionArea || '');
+                            setIsEditingArea(true);
+                          }}
+                          className="cursor-pointer group/area p-1.5 rounded-lg hover:bg-indigo-900/30 transition-all border border-transparent hover:border-indigo-700/40"
+                          title={lang === 'gu' ? 'વિસ્તાર બદલવા માટે ક્લિક કરો' : 'Click to edit area'}
+                        >
+                          {dutyRow.divisionArea ? (
+                            <p className="text-white font-black text-sm flex items-center gap-2">
+                              <span className="bg-indigo-600/30 text-indigo-200 px-2.5 py-0.5 rounded-md border border-indigo-500/40 font-bold">
+                                {dutyRow.divisionArea}
+                              </span>
+                            </p>
+                          ) : (
+                            <p className="text-indigo-300/80 text-xs italic flex items-center gap-1 group-hover/area:text-indigo-200">
+                              <span>{lang === 'gu' ? '+ વિસ્તાર નિર્ધારિત નથી (અહીં ક્લિક કરી ઉમેરો)' : '+ No area assigned (Click to add)'}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

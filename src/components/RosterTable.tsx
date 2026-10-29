@@ -169,6 +169,11 @@ export const RosterTable: React.FC<RosterTableProps> = ({
                 {resolved.rank}
               </span>
             )}
+            {dutyKey === 'divisionPi' && row.divisionArea && (
+              <span className="text-[10px] text-indigo-300 font-bold bg-indigo-950/80 px-1.5 py-0.5 rounded border border-indigo-700/50">
+                {row.divisionArea}
+              </span>
+            )}
           </div>
         </div>
 

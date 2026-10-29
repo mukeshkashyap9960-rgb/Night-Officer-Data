@@ -517,6 +517,11 @@ export default function App() {
                 {resolved.rank}
               </span>
             )}
+            {dutyKey === 'divisionPi' && row.divisionArea && (
+              <span className="text-[9px] text-indigo-300 font-bold bg-indigo-950/80 px-1 py-0.5 rounded border border-indigo-700/40">
+                {row.divisionArea}
+              </span>
+            )}
           </div>
         </div>
 

@@ -219,9 +219,8 @@ export function generateDutyWhatsAppUrl(params: {
 }
 
 /**
- * Individual message strictly formatted as requested
- * Header changed from "ગુજરાત પોલીસ" to "ક્રાઇમ બ્રાન્ચ"
- * Squad formatted as "સ્કોડ - ૦૩"
+ * Individual message strictly formatted as requested:
+ * Plain clean format without emojis, headers, or footers
  */
 export function createIndividualDutyMessage(params: {
   officer: Officer | null;
@@ -246,28 +245,14 @@ export function createIndividualDutyMessage(params: {
   const officerRank = resolved.rank || (officer?.category === 'PSI' ? 'PSI' : 'PI');
   const phone = officer?.phone || resolved.phone || 'ઉપલબ્ધ નથી';
   const squadFormatted = resolved.squadFormatted || formatSquadText(squadText);
-  const areaLine = (dutyTitleGu.includes('ડીવીઝન') && divisionArea) ? `🗺️ ડીવીજન વિસ્તાર: ${divisionArea}\n` : '';
+  const areaLine = (dutyTitleGu.includes('ડીવીઝન') && divisionArea) ? `વિસ્તાર: ${divisionArea}\n` : '';
 
-  if (dutyTitleGu.includes('CM મોરચો') || dutyTitleGu.includes('કેમ્પસ') || dutyTitleGu.includes('VVIP')) {
-    const cleanTitle = dutyTitleGu.replace(/\s*\(PSI\)/g, '').trim();
-    return `🚨 *ક્રાઇમ બ્રાન્ચ - ${cleanTitle}* 🚨
-📅 તારીખ: ${date} (${dayName})
-      સ્કોડ : ${squadFormatted}
-👮 નામ: ${officerName}
-🏷️ હોદ્દો: ${officerRank}
-🛡️ પ્રકાર: ${dutyTitleGu}
-📞 મોબાઇલ નંબર: ${phone}
-જય હિન્દ! 🇮🇳`;
-  }
-
-  return `🚨 *ક્રાઇમ બ્રાન્ચ - નાઈટ ડ્યુટી* 🚨
-📅 તારીખ: ${date} (${dayName})
-      સ્કોડ : ${squadFormatted}
-👮 નામ: ${officerName}
-🏷️ હોદ્દો: ${officerRank}
-🛡️ નાઈਟ નો પ્રકાર: ${dutyTitleGu}
-${areaLine}📞 મોબાઇલ નંબર: ${phone}
-જય હિન્દ! 🇮🇳`;
+  return `તારીખ: ${date} (${dayName})
+સ્કોડ : ${squadFormatted}
+નામ: ${officerName}
+હોદ્દો: ${officerRank}
+નાઈટ નો પ્રકાર: ${dutyTitleGu}
+${areaLine}મોબાઇલ નંબર: ${phone}`;
 }
 
 /**
