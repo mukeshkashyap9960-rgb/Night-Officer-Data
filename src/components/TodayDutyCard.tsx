@@ -39,6 +39,10 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
   const [isEditingArea, setIsEditingArea] = useState(false);
   const [areaInput, setAreaInput] = useState(dutyRow.divisionArea || '');
 
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getDate()}/${todayObj.getMonth() + 1}/${todayObj.getFullYear()}`;
+  const isToday = dutyRow.date === todayStr;
+
   useEffect(() => {
     setAreaInput(dutyRow.divisionArea || '');
     setIsEditingArea(false);
@@ -89,20 +93,32 @@ export const TodayDutyCard: React.FC<TodayDutyCardProps> = ({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isToday ? 'p-2 rounded-3xl bg-gradient-to-r from-blue-600/20 via-indigo-600/10 to-blue-600/20 border border-amber-400/50 shadow-2xl ring-1 ring-amber-400/30' : ''}`}>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-blue-500 shadow-sm">
+          <div className={`p-2.5 rounded-xl border shadow-sm ${
+            isToday ? 'bg-amber-400 text-slate-950 border-amber-300' : 'bg-slate-900 border-slate-800 text-blue-500'
+          }`}>
             <Clock size={22} />
           </div>
           <div>
-            <h3 className="text-xl sm:text-2xl font-black text-white">{lang === 'gu' ? 'આજની ફરજ વિગત' : 'Active Duty Allocation'}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                {isToday ? (lang === 'gu' ? 'આજની ફરજ વિગત' : 'Today\'s Duty Allocation') : (lang === 'gu' ? 'તારીખ વાઇઝ ફરજ વિગત' : 'Date Duty Allocation')}
+              </h3>
+              {isToday && (
+                <span className="px-2.5 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full shadow-md animate-pulse">
+                  ★ {lang === 'gu' ? 'આજની તારીખ (TODAY)' : 'TODAY'}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-400 uppercase tracking-widest font-black mt-0.5">
               {dutyRow.date} • {dutyRow.dayName}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => onBroadcast('PI', dutyRow)}
             className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 hover:text-white text-blue-400 rounded-xl text-xs font-black transition-all cursor-pointer border border-blue-600/30 shadow-sm"

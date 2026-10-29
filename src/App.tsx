@@ -15,14 +15,18 @@ import {
   Bell,
   LogOut,
   Download,
-  MessageSquare
+  MessageSquare,
+  CalendarDays,
+  Plus,
+  PartyPopper
 } from 'lucide-react';
 import { DutyRow, Officer, AlertConfig } from './types/roster';
 import { 
   NOVEMBER_2026_ROSTER, 
   DEFAULT_OFFICERS, 
   DUTY_COLUMNS, 
-  generateMonthRoster 
+  generateMonthRoster,
+  generateDayRoster
 } from './data/rosterData';
 import { Header } from './components/Header';
 import { TodayDutyCard } from './components/TodayDutyCard';
@@ -183,6 +187,36 @@ export default function App() {
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<'table' | 'card'>('table');
 
+  const [activeCalendarYear, setActiveCalendarYear] = useState<number>(() => {
+    const today = new Date();
+    return today.getFullYear();
+  });
+
+  const [activeCalendarMonth, setActiveCalendarMonth] = useState<number>(() => {
+    const today = new Date();
+    return today.getMonth(); // 0-indexed month (10 = November)
+  });
+
+  // Dynamically compute all 1 to 30/31 days of active calendar month in exact sequential order
+  const activeMonthRoster = useMemo(() => {
+    const daysInMonth = new Date(activeCalendarYear, activeCalendarMonth + 1, 0).getDate();
+    const rosterMap = new Map<string, DutyRow>();
+    roster.forEach(r => rosterMap.set(r.date, r));
+
+    const list: DutyRow[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${d}/${activeCalendarMonth + 1}/${activeCalendarYear}`;
+      const existing = rosterMap.get(dStr);
+      if (existing) {
+        list.push(existing);
+      } else {
+        const dObj = new Date(activeCalendarYear, activeCalendarMonth, d);
+        list.push(generateDayRoster(dObj));
+      }
+    }
+    return list;
+  }, [roster, activeCalendarYear, activeCalendarMonth]);
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
     initializeData();
@@ -237,8 +271,30 @@ export default function App() {
   }, [currentDate]);
 
   const selectedDutyRow = useMemo(() => {
-    return roster.find(r => r.date === selectedDate) || roster[0] || NOVEMBER_2026_ROSTER[0];
+    const match = roster.find(r => r.date === selectedDate);
+    if (match) return match;
+    const parts = selectedDate.split('/');
+    if (parts.length === 3) {
+      const dObj = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      return generateDayRoster(dObj);
+    }
+    return roster[0] || NOVEMBER_2026_ROSTER[0];
   }, [roster, selectedDate]);
+
+  const handleSelectDateWithAutoCreate = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    const exists = roster.some(r => r.date === dateStr);
+    if (!exists) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const dObj = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        const newRow = generateDayRoster(dObj);
+        const updated = [...roster, newRow];
+        setRoster(updated);
+        saveRosterToLocal(updated);
+      }
+    }
+  };
 
   const handleOpenIndividualWhatsApp = (squad: string, dutyTypeKey: string, dutyTitleGu: string, dateParam?: string, dayParam?: string) => {
     const date = dateParam || selectedDutyRow.date;
@@ -622,6 +678,7 @@ export default function App() {
                           <TableIcon size={16} />
                           <span>{lang === 'gu' ? 'ટેબલ વ્યૂ' : 'Table View'}</span>
                         </button>
+
                         <button
                           type="button"
                           onClick={() => setDashboardView('card')}
@@ -662,33 +719,97 @@ export default function App() {
                     />
                   ) : (
                     <>
-                      {/* Quick 1 to 30 Date Selector for Rapid Swapping & Viewing */}
-                      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
-                        <div className="flex items-center justify-between text-xs font-bold px-1">
-                          <span className="text-slate-300 font-bold text-sm">
-                            {lang === 'gu' ? 'તારીખ પસંદ કરો' : 'Select Date'}
-                          </span>
-                          <span className="text-amber-400 font-mono bg-amber-950/60 px-2.5 py-0.5 rounded border border-amber-800/40">
-                            {lang === 'gu' ? 'પસંદ કરેલ તારીખ' : 'Active Date'}: {selectedDate}
-                          </span>
+                      {/* Month Calendar Selector with Sequential 1 to 30/31 Days & Today Highlight */}
+                      <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl space-y-4 shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl">
+                              <CalendarDays size={20} />
+                            </div>
+                            <div>
+                              <h4 className="text-base sm:text-lg font-black text-white">
+                                {lang === 'gu' ? 'મહિનાવાર સળંગ ૧ થી ૩૦/૩૧ કેલેન્ડર પત્રક' : 'Monthly Roster Calendar'}
+                              </h4>
+                              <p className="text-xs text-slate-400 font-bold">
+                                {lang === 'gu' 
+                                  ? 'સળંગ ૧ થી ૩૦/૩૧ તારીખોનું સંપૂર્ણ નાઈટ પત્રક તૈયાર છે' 
+                                  : 'Sequential 1 to 30/31 days full night duty roster'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Month Picker */}
+                            <select
+                              value={activeCalendarMonth}
+                              onChange={(e) => setActiveCalendarMonth(parseInt(e.target.value, 10))}
+                              className="bg-slate-950 border border-slate-700 text-white font-black text-xs sm:text-sm px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            >
+                              {['જાન્યુઆરી', 'ફેબ્રુઆરી', 'માર્ચ', 'એપ્રિલ', 'મે', 'જૂન', 'જુલાઈ', 'ઓગસ્ટ', 'સપ્ટેમ્બર', 'ઓક્ટોબર', 'નવેમ્બર', 'ડિસેમ્બર'].map((mName, idx) => (
+                                <option key={mName} value={idx}>
+                                  {mName}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Year Picker */}
+                            <select
+                              value={activeCalendarYear}
+                              onChange={(e) => setActiveCalendarYear(parseInt(e.target.value, 10))}
+                              className="bg-slate-950 border border-slate-700 text-amber-400 font-mono font-black text-xs sm:text-sm px-3 py-1.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                            >
+                              {[2025, 2026, 2027, 2028, 2029].map(y => (
+                                <option key={y} value={y}>{y}</option>
+                              ))}
+                            </select>
+
+                            {/* Today Jump Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const today = new Date();
+                                setActiveCalendarYear(today.getFullYear());
+                                setActiveCalendarMonth(today.getMonth());
+                                const todayStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+                                handleSelectDateWithAutoCreate(todayStr);
+                              }}
+                              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs flex items-center gap-1"
+                              title={lang === 'gu' ? 'આજની તારીખ પર જાઓ' : 'Jump to Today'}
+                            >
+                              <span>★ {lang === 'gu' ? 'આજે' : 'Today'}</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                          {roster.map((r) => {
+
+                        {/* Sequential Date Strip 1 to 30/31 */}
+                        <div className="flex gap-2 overflow-x-auto pb-2 pt-1 scrollbar-thin">
+                          {activeMonthRoster.map((r) => {
                             const isSelected = r.date === selectedDate;
+                            const todayObj = new Date();
+                            const todayStr = `${todayObj.getDate()}/${todayObj.getMonth() + 1}/${todayObj.getFullYear()}`;
+                            const isTodayDate = r.date === todayStr;
                             const dayNum = r.date.split('/')[0];
+                            
                             return (
                               <button
                                 key={r.date}
                                 type="button"
-                                onClick={() => setSelectedDate(r.date)}
-                                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer flex flex-col items-center min-w-[56px] border ${
-                                  isSelected
-                                    ? 'bg-blue-600 text-white border-blue-400 shadow-lg scale-105 ring-2 ring-blue-500/30'
-                                    : 'bg-slate-950 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700'
+                                onClick={() => handleSelectDateWithAutoCreate(r.date)}
+                                className={`px-3.5 py-2.5 rounded-2xl text-xs font-black transition-all shrink-0 cursor-pointer flex flex-col items-center min-w-[62px] border relative ${
+                                  isTodayDate
+                                    ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-xl ring-2 ring-amber-400/80 scale-105 z-10 font-black'
+                                    : isSelected
+                                    ? 'bg-blue-600 text-white border-blue-400 shadow-lg scale-105 ring-2 ring-blue-500/40'
+                                    : 'bg-slate-950 text-slate-300 hover:text-white border-slate-800 hover:border-blue-500/40 hover:bg-slate-900'
                                 }`}
                               >
-                                <span className="text-base font-black leading-none">{dayNum}</span>
-                                <span className="text-[10px] font-bold opacity-80 mt-1">{r.dayName.slice(0, 3)}</span>
+                                <div className="flex items-center gap-0.5">
+                                  <span className="text-base font-black leading-none">{dayNum}</span>
+                                  {isTodayDate && <span className="text-[10px] text-slate-950 font-black">★</span>}
+                                </div>
+                                <span className={`text-[10px] font-bold mt-1 ${isTodayDate ? 'text-slate-950 font-black' : 'opacity-80'}`}>
+                                  {r.dayName.slice(0, 3)}
+                                </span>
                               </button>
                             );
                           })}
@@ -783,17 +904,38 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50 font-bold">
-                              {roster.map((row) => {
+                              {activeMonthRoster.map((row) => {
+                                const todayObj = new Date();
+                                const realTodayStr = `${todayObj.getDate()}/${todayObj.getMonth() + 1}/${todayObj.getFullYear()}`;
+                                const isRealToday = row.date === realTodayStr;
                                 const isCurrentDate = row.date === selectedDate;
+
                                 return (
                                   <tr
                                     key={row.date}
-                                    className={`transition-all hover:bg-slate-800/40 ${isCurrentDate ? 'bg-blue-600/10 border-l-4 border-l-blue-500' : ''}`}
+                                    className={`transition-all ${
+                                      isRealToday
+                                        ? 'bg-gradient-to-r from-amber-500/20 via-blue-900/40 to-indigo-900/30 border-l-8 border-l-amber-400 shadow-xl ring-1 ring-amber-400/50'
+                                        : isCurrentDate
+                                        ? 'bg-blue-600/10 border-l-4 border-l-blue-500'
+                                        : 'hover:bg-slate-800/40'
+                                    }`}
                                   >
                                     <td className="py-3 px-4">
                                       <div className="flex flex-col">
-                                        <span className="text-base font-black text-white leading-tight">{row.dayName}</span>
-                                        <span className="text-xs font-mono font-black text-blue-400 tracking-wider">{row.date}</span>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className={`text-base font-black leading-tight ${isRealToday ? 'text-amber-300' : 'text-white'}`}>
+                                            {row.dayName}
+                                          </span>
+                                          {isRealToday && (
+                                            <span className="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[9px] rounded-full shadow-md animate-pulse">
+                                              ★ {lang === 'gu' ? 'આજે' : 'TODAY'}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className={`text-xs font-mono font-black tracking-wider ${isRealToday ? 'text-amber-300' : 'text-blue-400'}`}>
+                                          {row.date}
+                                        </span>
                                       </div>
                                     </td>
                                     <td className="py-2.5 px-2.5 border-l border-slate-800/30">
@@ -820,7 +962,7 @@ export default function App() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => handleOpenPsiBroadcast(row, roster.indexOf(row))}
+                                          onClick={() => handleOpenPsiBroadcast(row, activeMonthRoster.indexOf(row))}
                                           className="w-full px-2 py-1 bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg text-[10px] font-black transition-all cursor-pointer border border-emerald-500/20"
                                           title="PSI Broadcast WhatsApp"
                                         >

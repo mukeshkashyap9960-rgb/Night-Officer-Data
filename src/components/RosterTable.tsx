@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { DutyRow, Officer } from '../types/roster';
 import { formatSquadText, resolveOfficerAndSquad } from '../utils/whatsapp';
+import { generateDayRoster } from '../data/rosterData';
 
 interface RosterTableProps {
   roster: DutyRow[];
@@ -57,7 +58,40 @@ export const RosterTable: React.FC<RosterTableProps> = ({
   const [activeFilter, setActiveFilter] = useState<'all' | 'pi' | 'psi'>('all');
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | '1-10' | '11-20' | '21-30'>('all');
 
-  const filteredRoster = roster.filter((row) => {
+  const todayObj = new Date();
+  const realTodayStr = `${todayObj.getDate()}/${todayObj.getMonth() + 1}/${todayObj.getFullYear()}`;
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => {
+    const parts = currentDateStr.split('/');
+    return parts.length === 3 ? (parseInt(parts[1], 10) - 1) : todayObj.getMonth();
+  });
+
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const parts = currentDateStr.split('/');
+    return parts.length === 3 ? parseInt(parts[2], 10) : todayObj.getFullYear();
+  });
+
+  // Automatically ensure all 1 to 30/31 days of the selected month are generated in sequential order
+  const fullMonthRoster = useMemo(() => {
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const rosterMap = new Map<string, DutyRow>();
+    roster.forEach(r => rosterMap.set(r.date, r));
+
+    const list: DutyRow[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${d}/${selectedMonth + 1}/${selectedYear}`;
+      const existing = rosterMap.get(dStr);
+      if (existing) {
+        list.push(existing);
+      } else {
+        const dObj = new Date(selectedYear, selectedMonth, d);
+        list.push(generateDayRoster(dObj));
+      }
+    }
+    return list;
+  }, [roster, selectedYear, selectedMonth]);
+
+  const filteredRoster = fullMonthRoster.filter((row) => {
     // Parse day number for 1-10, 11-20, 21-30 filter
     const dayNum = parseInt(row.date.split('/')[0], 10);
     if (dateRangeFilter === '1-10' && (dayNum < 1 || dayNum > 10)) return false;
@@ -79,7 +113,6 @@ export const RosterTable: React.FC<RosterTableProps> = ({
       row.vvipPsi.toLowerCase().includes(term) ||
       row.date.toLowerCase().includes(term) ||
       row.dayName.toLowerCase().includes(term) ||
-      // Also match officer name if available
       (officersMap[row.communalPi]?.name?.toLowerCase().includes(term)) ||
       (officersMap[row.divisionPi]?.name?.toLowerCase().includes(term)) ||
       (officersMap[row.cmMorchoPsi]?.name?.toLowerCase().includes(term)) ||
@@ -96,6 +129,17 @@ export const RosterTable: React.FC<RosterTableProps> = ({
     }
     return true;
   });
+
+  // Always sort rows chronologically 1 to 30/31
+  const sortedFilteredRoster = useMemo(() => {
+    return [...filteredRoster].sort((a, b) => {
+      const pA = a.date.split('/').map(Number);
+      const pB = b.date.split('/').map(Number);
+      if (pA[2] !== pB[2]) return pA[2] - pB[2];
+      if (pA[1] !== pB[1]) return pA[1] - pB[1];
+      return pA[0] - pB[0];
+    });
+  }, [filteredRoster]);
 
   // Calculate detected rows count and preview info from pasted/uploaded content
   const detectedInfo = useMemo(() => {
@@ -210,6 +254,63 @@ export const RosterTable: React.FC<RosterTableProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Month & Year Selection Bar for Roster Table */}
+      <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl">
+            <CalendarIcon size={20} />
+          </div>
+          <div>
+            <h4 className="text-base font-black text-white">
+              {lang === 'gu' ? 'મહિનાવાર સંપૂર્ણ ડ્યુટી પત્રક (ટેબલ વ્યૂ)' : 'Full Month Duty Roster (Table View)'}
+            </h4>
+            <p className="text-xs text-slate-400 font-bold">
+              {lang === 'gu' ? 'સંપૂર્ણ ૧ થી ૩૦/૩૧ સળંગ તારીખોનું નાઈટ પેટ્રોલિંગ પત્રક' : 'Full 1 to 30/31 days night patrolling roster'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Month Picker */}
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
+            className="bg-slate-950 border border-slate-700 text-white font-black text-xs sm:text-sm px-3.5 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+          >
+            {['જાન્યુઆરી', 'ફેબ્રુઆરી', 'માર્ચ', 'એપ્રિલ', 'મે', 'જૂન', 'જુલાઈ', 'ઓગસ્ટ', 'સપ્ટેમ્બર', 'ઓક્ટોબર', 'નવેમ્બર', 'ડિસેમ્બર'].map((mName, idx) => (
+              <option key={mName} value={idx}>
+                {mName}
+              </option>
+            ))}
+          </select>
+
+          {/* Year Picker */}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+            className="bg-slate-950 border border-slate-700 text-amber-400 font-mono font-black text-xs sm:text-sm px-3.5 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer shadow-sm"
+          >
+            {[2025, 2026, 2027, 2028, 2029].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+
+          {/* Jump to Today Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const today = new Date();
+              setSelectedYear(today.getFullYear());
+              setSelectedMonth(today.getMonth());
+            }}
+            className="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+            title={lang === 'gu' ? 'આજના મહિના પર જાઓ' : 'Jump to Current Month'}
+          >
+            <span>★ {lang === 'gu' ? 'આજનો મહિનો' : 'Current Month'}</span>
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-4">
         <div className="flex flex-col xl:flex-row md:items-center justify-between gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center flex-1">
@@ -334,39 +435,66 @@ export const RosterTable: React.FC<RosterTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50 font-bold">
-              {filteredRoster.map((row, idx) => (
-                <tr 
-                  key={row.date} 
-                  className={`group transition-all ${row.date === currentDateStr ? 'bg-blue-600/10' : 'hover:bg-slate-800/40'}`}
-                >
-                  <td className="py-10 px-10">
-                    <div className="flex flex-col">
-                      <span className="text-3xl font-black text-white leading-none mb-2 tracking-tighter">{row.dayName}</span>
-                      <span className="text-base font-mono font-black text-blue-500 tracking-widest uppercase">{row.date}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.communalPi, 'communalPi', 'કોમ્યુનલ નાઈટ', row)}</td>
-                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.divisionPi, 'divisionPi', 'ડીવીઝન નાઈટ', row)}</td>
-                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.cmMorchoPsi, 'cmMorchoPsi', 'CM મોરચો', row)}</td>
-                  <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}</td>
-                  <td className="py-10 px-10 text-right border-l border-slate-800/30">
-                    <div className="flex flex-col items-end gap-2">
-                      <button 
-                        onClick={() => onPiBroadcast(row)}
-                        className="w-full px-4 py-2 bg-blue-600/10 text-blue-400 rounded-xl text-xs font-black uppercase tracking-tighter hover:bg-blue-600 hover:text-white transition-all cursor-pointer border border-blue-600/20 shadow-sm"
-                      >
-                        PI પત્રક
-                      </button>
-                      <button 
-                        onClick={() => onPsiBroadcast(row, idx)}
-                        className="w-full px-4 py-2 bg-emerald-600/10 text-emerald-400 rounded-xl text-xs font-black uppercase tracking-tighter hover:bg-emerald-600 hover:text-white transition-all cursor-pointer border border-emerald-600/20 shadow-sm"
-                      >
-                        PSI પત્રક
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {sortedFilteredRoster.map((row, idx) => {
+                const isRealToday = row.date === realTodayStr;
+                const isCurrentSelected = row.date === currentDateStr;
+
+                return (
+                  <tr 
+                    key={row.date} 
+                    className={`group transition-all ${
+                      isRealToday
+                        ? 'bg-gradient-to-r from-amber-500/20 via-blue-900/40 to-indigo-900/30 border-l-8 border-amber-400 shadow-2xl ring-1 ring-amber-400/50'
+                        : isCurrentSelected
+                        ? 'bg-blue-600/10'
+                        : 'hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <td className="py-8 px-6">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-2xl sm:text-3xl font-black leading-none tracking-tighter ${
+                            isRealToday ? 'text-amber-300 font-extrabold' : 'text-white'
+                          }`}>
+                            {row.dayName}
+                          </span>
+                          {isRealToday && (
+                            <span className="px-2.5 py-1 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full shadow-lg animate-pulse border border-amber-300">
+                              ★ {lang === 'gu' ? 'આજની તારીખ (TODAY)' : 'TODAY'}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className={`text-sm font-mono font-black tracking-wider uppercase ${
+                          isRealToday ? 'text-amber-300 font-extrabold' : 'text-blue-400'
+                        }`}>
+                          {row.date}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.communalPi, 'communalPi', 'કોમ્યુનલ નાઈટ', row)}</td>
+                    <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.divisionPi, 'divisionPi', 'ડીવીઝન નાઈટ', row)}</td>
+                    <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.cmMorchoPsi, 'cmMorchoPsi', 'CM મોરચો', row)}</td>
+                    <td className="py-4 px-3 border-l border-slate-800/30">{renderCell(row.campusPsi, 'campusPsi', 'કેમ્પસ નાઈટ', row)}</td>
+                    <td className="py-8 px-6 text-right border-l border-slate-800/30">
+                      <div className="flex flex-col items-end gap-2">
+                        <button 
+                          onClick={() => onPiBroadcast(row)}
+                          className="w-full px-4 py-2 bg-blue-600/10 text-blue-400 rounded-xl text-xs font-black uppercase tracking-tighter hover:bg-blue-600 hover:text-white transition-all cursor-pointer border border-blue-600/20 shadow-sm"
+                        >
+                          PI પત્રક
+                        </button>
+                        <button 
+                          onClick={() => onPsiBroadcast(row, idx)}
+                          className="w-full px-4 py-2 bg-emerald-600/10 text-emerald-400 rounded-xl text-xs font-black uppercase tracking-tighter hover:bg-emerald-600 hover:text-white transition-all cursor-pointer border border-emerald-600/20 shadow-sm"
+                        >
+                          PSI પત્રક
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

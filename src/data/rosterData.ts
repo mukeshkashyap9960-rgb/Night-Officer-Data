@@ -206,7 +206,7 @@ export function generateDayRoster(dateObj: Date): DutyRow {
 }
 
 export function generateMonthRoster(year: number, month: number): DutyRow[] {
-  // If year is 2026 and month is 11 (November, 0-indexed 10), return exact table
+  // If year is 2026 and month is 10 (November), return exact table
   if (year === 2026 && month === 10) {
     return [...NOVEMBER_2026_ROSTER];
   }
@@ -216,4 +216,13 @@ export function generateMonthRoster(year: number, month: number): DutyRow[] {
     rows.push(generateDayRoster(new Date(year, month, d)));
   }
   return rows;
+}
+
+export function generateYearRoster(year: number): DutyRow[] {
+  const allRows: DutyRow[] = [];
+  for (let m = 0; m < 12; m++) {
+    const monthRows = generateMonthRoster(year, m);
+    allRows.push(...monthRows);
+  }
+  return allRows;
 }

@@ -1,5 +1,5 @@
 import { Officer, DutyRow } from '../types/roster';
-import { DEFAULT_OFFICERS, NOVEMBER_2026_ROSTER } from '../data/rosterData';
+import { DEFAULT_OFFICERS, NOVEMBER_2026_ROSTER, generateYearRoster } from '../data/rosterData';
 import { supabase, TABLES } from './supabaseClient';
 
 const STORAGE_KEYS = {
@@ -211,12 +211,13 @@ export async function fetchAndSyncRoster(): Promise<DutyRow[]> {
   }
 
   const local = loadRosterFromLocal();
-  if (local !== null) {
+  if (local !== null && local.length > 30) {
     return local;
   }
 
-  saveRosterToLocal(NOVEMBER_2026_ROSTER);
-  return NOVEMBER_2026_ROSTER;
+  const fullYearRoster = generateYearRoster(2026);
+  saveRosterToLocal(fullYearRoster);
+  return fullYearRoster;
 }
 
 export function loadRosterFromLocal(): DutyRow[] | null {

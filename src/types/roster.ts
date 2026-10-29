@@ -15,6 +15,8 @@ export interface DutyRow {
   campusPsi: string; // "સ્કોડ-૦૧"
   vvipPsi: string; // "સ્કોડ-૦૬"
   divisionArea?: string; // "ડીવીજન વિસ્તાર e.g. એ-ડીવીઝન પોલીસ સ્ટેશન વિસ્તાર"
+  isHoliday?: boolean; // Indicates if marked as a holiday
+  holidayTitle?: string; // Reason or label e.g. "દિવાળી", "સાપ્તાહિક રજા"
   notes?: string;
   attendance?: {
     communalPi?: 'present' | 'absent' | 'leave';

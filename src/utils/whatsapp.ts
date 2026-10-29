@@ -255,10 +255,40 @@ export function createIndividualDutyMessage(params: {
 ${areaLine}મોબાઇલ નંબર: ${phone}`;
 }
 
+function formatDutyBlock(params: {
+  date: string;
+  dayName: string;
+  squadText: string;
+  dutyTypeTitle: string;
+  officersMap: Record<string, Officer>;
+  officersList: Officer[];
+  fallbackSlot: string;
+  defaultRank: 'PI' | 'PSI';
+  area?: string;
+}): string {
+  const resolved = resolveOfficerAndSquad(params.squadText, params.officersMap, params.officersList, params.fallbackSlot);
+  const name = resolved.name || params.squadText;
+  const squadFormatted = resolved.squadFormatted || formatSquadText(params.squadText);
+  let rank = resolved.rank || params.defaultRank;
+  if (/પોલીસ ઇન્સ્પેક્ટર/i.test(rank) || (params.defaultRank === 'PI' && !rank.includes('PSI'))) {
+    rank = 'PI';
+  } else if (/પોલીસ સબ ઇન્સ્પેક્ટર/i.test(rank) || params.defaultRank === 'PSI') {
+    rank = 'PSI';
+  }
+  const phone = resolved.phone || 'ઉપલબ્ધ નથી';
+  const areaLine = params.area?.trim() ? `વિસ્તાર: ${params.area.trim()}\n` : '';
+
+  return `તારીખ: ${params.date} (${params.dayName})
+સ્કોડ : ${squadFormatted}
+નામ: ${name}
+હોદ્દો: ${rank}
+નાઈટ નો પ્રકાર: ${params.dutyTypeTitle}
+${areaLine}મોબાઇલ નંબર: ${phone}`;
+}
+
 /**
- * Separate PI broadcast
- * Header changed from "ગુજરાત પોલીસ" to "ક્રાઇમ બ્રાન્ચ"
- * Squad formatted as "સ્કોડ - ૦૩"
+ * Separate PI broadcast strictly formatted as requested
+ * Clean block format without emojis, headers, lines, or footers
  */
 export function createPiBroadcastMessage(params: {
   row: DutyRow;
@@ -266,38 +296,36 @@ export function createPiBroadcastMessage(params: {
   officersList?: Officer[];
 }): string {
   const { row, officersMap, officersList = [] } = params;
-  
-  const getOffDetails = (s: string, dutyType: string, fallbackSlot: string) => {
-    const resolved = resolveOfficerAndSquad(s, officersMap, officersList, fallbackSlot);
-    let typeLine = '';
-    const cleanS = (s || '').trim();
-    if (cleanS.includes('ડિવીઝન') || cleanS.includes('ડીવીઝન') || cleanS.includes('I ડીવી') || cleanS.includes('K ડીવી') || cleanS.includes('M ડીવી') || cleanS.includes('પ્રકાર')) {
-      if (!cleanS.includes('PI શ્રી') && !cleanS.includes('શ્રી')) {
-        typeLine = `પ્રકાર : ${cleanS}`;
-      }
-    }
 
-    return `• ${dutyType}
-નામ: ${resolved.name}
-સ્કોડ : ${resolved.squadFormatted}
-હોદ્દો: ${resolved.rank}${typeLine ? `\n${typeLine}` : ''}
-મોબાઇલ: ${resolved.phone}`;
-  };
+  const communalBlock = formatDutyBlock({
+    date: row.date,
+    dayName: row.dayName,
+    squadText: row.communalPi,
+    dutyTypeTitle: 'કોમ્યુનલ નાઈટ (PI)',
+    officersMap,
+    officersList,
+    fallbackSlot: 'PI શ્રી, સ્કોડ-૦૧',
+    defaultRank: 'PI',
+  });
 
-  return `⭐ ક્રાઇમ બ્રાન્ચ - PI શ્રી નાઈટ ⭐
-📅 તારીખ: ${row.date} (${row.dayName})
-━━━━━━━━━━━━━━━━━━━━
-${getOffDetails(row.communalPi, 'કોમ્યુનલ નાઈટ PI શ્રી', 'સ્કોડ-૦૧')}
+  const divisionBlock = formatDutyBlock({
+    date: row.date,
+    dayName: row.dayName,
+    squadText: row.divisionPi,
+    dutyTypeTitle: 'ડીવીઝન નાઈટ (PI)',
+    officersMap,
+    officersList,
+    fallbackSlot: 'PI શ્રી, સ્કોડ-૦૮',
+    defaultRank: 'PI',
+    area: row.divisionArea,
+  });
 
-${getOffDetails(row.divisionPi, 'ડીવીઝન નાઈટ PI શ્રી', 'સ્કોડ-૦૮')}
-━━━━━━━━━━━━━━━━━━━━
-જય હિન્દ! 🇮🇳`;
+  return `${communalBlock}\n\n${divisionBlock}`;
 }
 
 /**
- * Separate PSI broadcast
- * Header changed from "ગુજરાત પોલીસ" to "ક્રાઇમ બ્રાન્ચ"
- * Squad formatted as "સ્કોડ - ૦૯" etc.
+ * Separate PSI broadcast strictly formatted as requested
+ * Clean block format without emojis, headers, lines, or footers
  */
 export function createPsiBroadcastMessage(params: {
   row: DutyRow;
@@ -307,27 +335,44 @@ export function createPsiBroadcastMessage(params: {
 }): string {
   const { row, nextRow, officersMap, officersList = [] } = params;
 
-  const getOffDetails = (s: string, dutyType: string, fallbackSlot: string) => {
-    const resolved = resolveOfficerAndSquad(s, officersMap, officersList, fallbackSlot);
-    const psiRank = resolved.rank.includes('PI') && !resolved.rank.includes('PSI') ? 'PSI' : resolved.rank;
+  const cmBlock = formatDutyBlock({
+    date: row.date,
+    dayName: row.dayName,
+    squadText: row.cmMorchoPsi,
+    dutyTypeTitle: 'CM મોરચો (PSI)',
+    officersMap,
+    officersList,
+    fallbackSlot: 'સ્કોડ-૦૯',
+    defaultRank: 'PSI',
+  });
 
-    return `• ${dutyType}
-નામ: ${resolved.name}
-સ્કોડ : ${resolved.squadFormatted}
-હોદ્દો: ${psiRank}
-મોબાઇલ: ${resolved.phone}`;
-  };
+  const campusBlock = formatDutyBlock({
+    date: row.date,
+    dayName: row.dayName,
+    squadText: row.campusPsi,
+    dutyTypeTitle: 'કેમ્પસ નાઈટ (PSI)',
+    officersMap,
+    officersList,
+    fallbackSlot: 'સ્કોડ-૦૧',
+    defaultRank: 'PSI',
+  });
 
-  const nextCmDetails = nextRow 
-    ? getOffDetails(nextRow.cmMorchoPsi, `CM મોરચો (આગામી તારીખ: ${nextRow.date})`, 'સ્કોડ-૦૮')
-    : '';
+  const blocks = [cmBlock, campusBlock];
 
-  return `⭐ ક્રાઇમ બ્રાન્ચ - PSI શ્રી નાઈટ ⭐
-📅 તારીખ: ${row.date} (${row.dayName})
-━━━━━━━━━━━━━━━━━━━━
-${getOffDetails(row.cmMorchoPsi, 'CM મોરચો PSI શ્રી', 'સ્કોડ-૦૯')}
+  if (nextRow && nextRow.cmMorchoPsi) {
+    blocks.push(
+      formatDutyBlock({
+        date: nextRow.date,
+        dayName: nextRow.dayName,
+        squadText: nextRow.cmMorchoPsi,
+        dutyTypeTitle: 'CM મોરચો (PSI) (આગામી તારીખ)',
+        officersMap,
+        officersList,
+        fallbackSlot: 'સ્કોડ-૦૮',
+        defaultRank: 'PSI',
+      })
+    );
+  }
 
-${getOffDetails(row.campusPsi, 'કેમ્પસ નાઈટ PSI શ્રી', 'સ્કોડ-૦૧')}${nextCmDetails ? `\n\n📌 *આગામી તારીખ મોરચો*\n${nextCmDetails}` : ''}
-━━━━━━━━━━━━━━━━━━━━
-જય હિન્દ! 🇮🇳`;
+  return blocks.join('\n\n');
 }
